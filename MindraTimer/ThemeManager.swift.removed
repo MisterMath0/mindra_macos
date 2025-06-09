@@ -1,0 +1,80 @@
+//
+//  ThemeManager.swift
+//  MindraTimer
+//
+//  Created by Guy Mathieu Foko on 09.06.25.
+//
+
+import SwiftUI
+
+enum AppTheme: String, CaseIterable {
+    case dark = "dark"
+    case light = "light"
+    
+    var displayName: String {
+        switch self {
+        case .dark: return "Dark"
+        case .light: return "Light"
+        }
+    }
+}
+
+class ThemeManager: ObservableObject {
+    @Published var currentTheme: AppTheme {
+        didSet {
+            UserDefaults.standard.set(currentTheme.rawValue, forKey: "selectedTheme")
+        }
+    }
+    
+    init() {
+        let savedTheme = UserDefaults.standard.string(forKey: "selectedTheme") ?? AppTheme.dark.rawValue
+        self.currentTheme = AppTheme(rawValue: savedTheme) ?? .dark
+    }
+    
+    func toggleTheme() {
+        currentTheme = currentTheme == .dark ? .light : .dark
+    }
+    
+    // Color scheme based on current theme
+    var backgroundColor: Color {
+        switch currentTheme {
+        case .dark: return Color.black
+        case .light: return Color.white
+        }
+    }
+    
+    var primaryTextColor: Color {
+        switch currentTheme {
+        case .dark: return Color.white
+        case .light: return Color.black
+        }
+    }
+    
+    var secondaryTextColor: Color {
+        switch currentTheme {
+        case .dark: return Color.white.opacity(0.7)
+        case .light: return Color.black.opacity(0.7)
+        }
+    }
+    
+    var accentColor: Color {
+        switch currentTheme {
+        case .dark: return Color.purple
+        case .light: return Color.blue
+        }
+    }
+    
+    var buttonBackgroundColor: Color {
+        switch currentTheme {
+        case .dark: return Color.white.opacity(0.1)
+        case .light: return Color.black.opacity(0.1)
+        }
+    }
+    
+    var buttonHoverColor: Color {
+        switch currentTheme {
+        case .dark: return Color.white.opacity(0.2)
+        case .light: return Color.black.opacity(0.2)
+        }
+    }
+}

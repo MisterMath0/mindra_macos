@@ -1,0 +1,166 @@
+//
+//  PomodoroView.swift
+//  MindraTimer
+//
+//  Created by Guy Mathieu Foko on 09.06.25.
+//
+
+import SwiftUI
+
+struct PomodoroView: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var timerManager: TimerManager
+    @EnvironmentObject var windowManager: WindowManager
+    
+    var body: some View {
+        VStack(spacing: windowManager.isCompact ? 12 : 24) {
+            // Timer mode label
+            Text(timerManager.currentMode.displayName)
+                .font(.system(
+                    size: windowManager.isCompact ? 12 : 16,
+                    weight: .semibold,
+                    design: .default
+                ))
+                .foregroundColor(timerManager.currentMode.color)
+                .tracking(windowManager.isCompact ? 1 : 2)
+            
+            // Progress ring (only in full screen mode)
+            if !windowManager.isCompact {
+                ZStack {
+                    // Background circle
+                    Circle()
+                        .stroke(
+                            themeManager.buttonBackgroundColor,
+                            lineWidth: 8
+                        )
+                        .frame(width: 120, height: 120)
+                    
+                    // Progress circle
+                    Circle()
+                        .trim(from: 0, to: timerManager.progress)
+                        .stroke(
+                            timerManager.currentMode.color,
+                            style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                        )
+                        .frame(width: 120, height: 120)
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeInOut(duration: 1), value: timerManager.progress)
+                    
+                    // Timer display in center
+                    Text(timerManager.formattedTime)
+                        .font(.system(
+                            size: 24,
+                            weight: .light,
+                            design: .monospaced
+                        ))
+                        .foregroundColor(themeManager.primaryTextColor)
+                        .tracking(1)
+                }
+            } else {
+                // Compact timer display
+                Text(timerManager.formattedTime)
+                    .font(.system(
+                        size: 36,
+                        weight: .light,
+                        design: .monospaced
+                    ))
+                    .foregroundColor(themeManager.primaryTextColor)
+                    .tracking(2)
+            }
+            
+            // Timer controls
+            HStack(spacing: windowManager.isCompact ? 8 : 16) {
+                // Reset button (only in full screen)
+                if !windowManager.isCompact {
+                    Button(action: { timerManager.resetTimer() }) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 16))
+                            .foregroundColor(themeManager.secondaryTextColor)
+                            .frame(width: 40, height: 40)
+                            .background(themeManager.buttonBackgroundColor)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                
+                // Main play/pause button
+                Button(action: toggleTimer) {
+                    Image(systemName: playPauseIcon)
+                        .font(.system(
+                            size: windowManager.isCompact ? 16 : 20,
+                            weight: .medium
+                        ))
+                        .foregroundColor(
+                            timerManager.isActive && !timerManager.isPaused
+                            ? themeManager.backgroundColor
+                            : themeManager.primaryTextColor
+                        )
+                        .frame(
+                            width: windowManager.isCompact ? 44 : 56,
+                            height: windowManager.isCompact ? 44 : 56
+                        )
+                        .background(
+                            timerManager.isActive && !timerManager.isPaused
+                            ? themeManager.primaryTextColor
+                            : themeManager.buttonBackgroundColor
+                        )
+                        .clipShape(Circle())
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                // Skip button (only in full screen)
+                if !windowManager.isCompact {
+                    Button(action: { timerManager.skipTimer() }) {
+                        Image(systemName: "forward.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(themeManager.secondaryTextColor)
+                            .frame(width: 40, height: 40)
+                            .background(themeManager.buttonBackgroundColor)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            
+            // Session counter (only in full screen)
+            if !windowManager.isCompact {
+                VStack(spacing: 4) {
+                    Text("Sessions Completed")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(themeManager.secondaryTextColor)
+                        .tracking(0.5)
+                    
+                    Text("\(timerManager.sessionsCompleted)")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(themeManager.accentColor)
+                }
+            }
+        }
+        .padding(windowManager.isCompact ? 16 : 32)
+    }
+    
+    private var playPauseIcon: String {
+        if timerManager.isActive && !timerManager.isPaused {
+            return "pause.fill"
+        } else {
+            return "play.fill"
+        }
+    }
+    
+    private func toggleTimer() {
+        if timerManager.isActive && !timerManager.isPaused {
+            timerManager.pauseTimer()
+        } else {
+            timerManager.startTimer()
+        }
+    }
+}
+
+#Preview {
+    PomodoroView()
+        .environmentObject(ThemeManager())
+        .environmentObject(TimerManager())
+        .environmentObject(WindowManager())
+        .frame(width: 400, height: 300)
+        .background(Color.black)
+}

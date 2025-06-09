@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5ECF175B2DF728E600654D6D /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 5ECF175A2DF728E600654D6D /* libsqlite3.tbd */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		5ECF16F82DF711F700654D6D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		5ECF16E92DF711F300654D6D /* MindraTimer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MindraTimer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5ECF16F72DF711F700654D6D /* MindraTimerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MindraTimerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5ECF17012DF711F700654D6D /* MindraTimerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MindraTimerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5ECF175A2DF728E600654D6D /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5ECF175B2DF728E600654D6D /* libsqlite3.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +84,7 @@
 				5ECF16EB2DF711F300654D6D /* MindraTimer */,
 				5ECF16FA2DF711F700654D6D /* MindraTimerTests */,
 				5ECF17042DF711F700654D6D /* MindraTimerUITests */,
+				5ECF17592DF728E500654D6D /* Frameworks */,
 				5ECF16EA2DF711F300654D6D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +97,14 @@
 				5ECF17012DF711F700654D6D /* MindraTimerUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		5ECF17592DF728E500654D6D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				5ECF175A2DF728E600654D6D /* libsqlite3.tbd */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
