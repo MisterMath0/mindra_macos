@@ -268,39 +268,42 @@ class TimerManager: ObservableObject {
         // Try to find the sound file in the bundle
         var soundFileName = soundName
         
-        // Map sound names to actual file names (you'll need to add these sound files)
+        // Map sound names to actual file names
         switch soundName {
         case "sparkle":
             soundFileName = "sparkle"
         case "chime":
             soundFileName = "chime"
         case "bellSoft":
-            soundFileName = "bell_soft"
+            soundFileName = "bell-soft"
         case "bellLoud":
-            soundFileName = "bell_loud"
+            soundFileName = "bell-loud"
+        case "trainArrival":
+            soundFileName = "train-arrival"
+        case "commuterJingle":
+            soundFileName = "commuter-jingle"
         case "gameShow":
-            soundFileName = "game_show"
-        case "nature":
-            soundFileName = "nature"
+            soundFileName = "game-show"
         default:
             // Fallback to system sound
             NSSound.beep()
             return
         }
         
-        // Try to load and play the sound file
-        if let path = Bundle.main.path(forResource: soundFileName, ofType: "mp3") {
-            let url = URL(fileURLWithPath: path)
-            
+        // Try to load and play the sound file from the bundle
+        if let url = Bundle.main.url(forResource: soundFileName, withExtension: "mp3") {
             do {
                 audioPlayer = try AVAudioPlayer(contentsOf: url)
                 audioPlayer?.volume = Float(statsManager?.settings.soundVolume ?? 70) / 100.0
                 audioPlayer?.play()
             } catch {
+                print("Error playing sound: \(error)")
                 // Fallback to system sound if file not found
                 NSSound.beep()
             }
         } else {
+            print("Sound file not found: \(soundFileName).mp3")
+            print("Bundle path: \(Bundle.main.bundlePath)")
             // Fallback to system sound
             NSSound.beep()
         }

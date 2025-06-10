@@ -81,11 +81,11 @@
 		5ECF16E02DF711F300654D6D = {
 			isa = PBXGroup;
 			children = (
-				5ECF16EB2DF711F300654D6D /* MindraTimer */,
 				5ECF16FA2DF711F700654D6D /* MindraTimerTests */,
 				5ECF17042DF711F700654D6D /* MindraTimerUITests */,
 				5ECF17592DF728E500654D6D /* Frameworks */,
 				5ECF16EA2DF711F300654D6D /* Products */,
+				5ECF16EB2DF711F300654D6D /* MindraTimer */,
 			);
 			sourceTree = "<group>";
 		};

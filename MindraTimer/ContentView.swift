@@ -42,6 +42,7 @@ struct ContentView: View {
     @EnvironmentObject var greetingManager: GreetingManager
     
     @State private var showSettings = false
+    @State private var showSoundPicker = false
     
     var body: some View {
         GeometryReader { geometry in
@@ -76,6 +77,10 @@ struct ContentView: View {
                 .environmentObject(appModeManager)
                 .environmentObject(quotesManager)
                 .environmentObject(greetingManager)
+        }
+        .sheet(isPresented: $showSoundPicker) {
+            SoundPickerView()
+                .environmentObject(statsManager)
         }
     }
     
@@ -446,7 +451,7 @@ struct ContentView: View {
         HStack {
             // Left side controls
             HStack(spacing: max(20, geometry.size.width * 0.025)) {
-                navButton(icon: "bell", action: {}, geometry: geometry)
+                navButton(icon: "bell", action: { showSoundPicker = true }, geometry: geometry)
             }
             .frame(width: max(60, geometry.size.width * 0.08), alignment: .leading)
             
