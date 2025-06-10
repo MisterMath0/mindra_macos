@@ -91,27 +91,41 @@ struct ContentView: View {
                     .scaleEffect(x: timerManager.progress, y: 1, anchor: .leading)
                     .animation(.easeInOut(duration: 1), value: timerManager.progress)
             }
-            
             Spacer()
-            
             // Main content centered - Clean minimal style
             if appModeManager.currentMode == .pomodoro {
                 compactTimerDisplay(geometry: geometry)
             } else {
                 compactClockDisplay(geometry: geometry)
             }
-            
             Spacer()
-            
             // Progress dots for pomodoro cycle
             if appModeManager.currentMode == .pomodoro {
                 pomodoroProgressDots()
                     .padding(.bottom, 12)
             }
-            
-            // Enhanced minimal controls
-            compactControls(geometry: geometry)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(
+            Button(action: {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    windowManager.toggleCompactMode()
+                }
+            }) {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(AppColors.primaryText)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        Circle()
+                            .fill(AppColors.cardBackground)
+                    )
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.top, 20)
+            .padding(.leading, 20),
+            alignment: .topLeading
+        )
     }
     
     private func compactTimerDisplay(geometry: GeometryProxy) -> some View {
@@ -167,53 +181,6 @@ struct ContentView: View {
                     .animation(.easeInOut(duration: 0.3), value: timerManager.sessionsCompleted)
             }
         }
-    }
-    
-    private func compactControls(geometry: GeometryProxy) -> some View {
-        HStack {
-            // Back to main view button
-            Button(action: { 
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                    windowManager.toggleCompactMode()
-                }
-            }) {
-                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(AppColors.primaryText)
-                    .frame(width: 24, height: 24)
-                    .background(
-                        Circle()
-                            .fill(AppColors.cardBackground)
-                    )
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            Spacer()
-            
-            // Mode toggle (clock/timer)
-            Button(action: { 
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    appModeManager.toggleMode()
-                }
-            }) {
-                Image(systemName: appModeManager.currentMode == .clock ? "timer" : "clock")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(AppColors.secondaryText)
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            Spacer()
-            
-            // Settings
-            Button(action: { showSettings = true }) {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(AppColors.secondaryText)
-            }
-            .buttonStyle(PlainButtonStyle())
-        }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 12)
     }
     
     // MARK: - Full Screen View

@@ -93,8 +93,8 @@ class WindowManager: ObservableObject {
             window.standardWindowButton(.zoomButton)?.isHidden = true
             
             // Make it resizable with proper size constraints
-            window.styleMask = [.titled, .resizable, .fullSizeContentView]
-            window.minSize = NSSize(width: 240, height: 140)
+            window.styleMask = [.resizable, .fullSizeContentView]
+            window.minSize = NSSize(width: 300, height: 180)
             window.maxSize = NSSize(width: 400, height: 300)
             
             // Hide title bar completely
@@ -102,8 +102,17 @@ class WindowManager: ObservableObject {
             window.titlebarAppearsTransparent = true
             
             // Set initial size
-            let newSize = NSSize(width: 280, height: 160)
+            let newSize = NSSize(width: 320, height: 200)
             window.setContentSize(newSize)
+            
+            // Add rounded corners
+            window.contentView?.wantsLayer = true
+            window.contentView?.layer?.cornerRadius = 18
+            window.contentView?.layer?.masksToBounds = true
+            
+            // Make window background transparent
+            window.isOpaque = false
+            window.backgroundColor = .clear
             
         } else {
             // Full mode: Normal window behavior
