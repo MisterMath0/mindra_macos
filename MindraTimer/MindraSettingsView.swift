@@ -7,22 +7,38 @@
 
 import SwiftUI
 
-// MARK: - Custom Button Styles
+// MARK: - Custom Styles
+
+struct ModernTextFieldStyle: TextFieldStyle {
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(AppColors.cardBackground)
+                    .stroke(AppColors.dividerColor, lineWidth: 1)
+            )
+            .foregroundColor(AppColors.primaryText)
+            .font(.system(size: 14, weight: .medium, design: .rounded))
+    }
+}
 
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 14, weight: .semibold, design: .rounded))
             .foregroundColor(.white)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 10)
                     .fill(AppColors.focusColor)
                     .opacity(configuration.isPressed ? 0.8 : 1.0)
+                    .shadow(color: AppColors.focusColor.opacity(0.3), radius: configuration.isPressed ? 2 : 4, x: 0, y: configuration.isPressed ? 1 : 2)
             )
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 
@@ -31,15 +47,16 @@ struct SecondaryButtonStyle: ButtonStyle {
         configuration.label
             .font(.system(size: 14, weight: .medium, design: .rounded))
             .foregroundColor(AppColors.secondaryText)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 10)
                     .fill(AppColors.cardBackground)
+                    .stroke(AppColors.dividerColor, lineWidth: 1)
                     .opacity(configuration.isPressed ? 0.8 : 1.0)
             )
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 
@@ -77,12 +94,7 @@ struct MindraSettingsView: View {
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundColor(AppColors.primaryText)
                 Spacer()
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(AppColors.secondaryText)
-                }
-                .buttonStyle(PlainButtonStyle())
+                // Remove the close button from here - it should be native macOS button
             }
             .padding(.horizontal, 24)
             .padding(.top, 24)
@@ -185,30 +197,37 @@ struct MindraSettingsView: View {
     
     private func profileSettingsView(geometry: GeometryProxy) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Profile Settings")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundColor(AppColors.primaryText)
+            VStack(alignment: .leading, spacing: 32) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Profile Settings")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(AppColors.primaryText)
+                    
+                    Text("Customize your personal information")
+                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .foregroundColor(AppColors.secondaryText)
+                }
                 
-                VStack(alignment: .leading, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 12) {
                         Text("Your Name")
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
                             .foregroundColor(AppColors.primaryText)
                         
                         TextField("Enter your name", text: $tempUserName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.system(size: 14, design: .rounded))
+                            .textFieldStyle(ModernTextFieldStyle())
                             .onSubmit { saveUserName() }
+                            .frame(maxWidth: 400)
                         
                         Text("Used for personalized greetings and quotes")
-                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
                             .foregroundColor(AppColors.secondaryText)
                     }
                     
-                    HStack {
+                    HStack(spacing: 12) {
                         Button("Save") { saveUserName() }
                             .buttonStyle(PrimaryButtonStyle())
+                            .disabled(tempUserName.trimmingCharacters(in: .whitespacesAndNewlines) == userName)
                         
                         if !userName.isEmpty {
                             Button("Clear") {
@@ -219,9 +238,10 @@ struct MindraSettingsView: View {
                         }
                     }
                 }
-                Spacer()
+                
+                Spacer(minLength: 200)
             }
-            .padding(.all, 32)
+            .padding(.all, 40)
         }
     }
     

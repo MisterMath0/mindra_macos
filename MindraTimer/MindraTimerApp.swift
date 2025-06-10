@@ -25,12 +25,6 @@ struct MindraTimerApp: App {
                 .environmentObject(appModeManager)
                 .environmentObject(quotesManager)
                 .environmentObject(greetingManager)
-                .frame(
-                    minWidth: windowManager.isCompact ? 260 : 800,
-                    maxWidth: windowManager.isCompact ? 260 : .infinity,
-                    minHeight: windowManager.isCompact ? 140 : 600,
-                    maxHeight: windowManager.isCompact ? 140 : .infinity
-                )
                 .background(WindowAccessor(windowManager: windowManager))
                 .onAppear {
                     // Connect timer manager with stats manager
@@ -43,7 +37,7 @@ struct MindraTimerApp: App {
                 }
         }
         .windowStyle(.automatic)
-        .windowResizability(windowManager.isCompact ? .contentSize : .contentMinSize)
+        .windowResizability(.contentMinSize) // Always allow resizing
     }
 }
 
@@ -62,8 +56,10 @@ struct WindowAccessor: NSViewRepresentable {
     }
     
     func updateNSView(_ nsView: NSView, context: Context) {
-        if let window = nsView.window {
-            windowManager.setWindow(window)
+        DispatchQueue.main.async {
+            if let window = nsView.window {
+                windowManager.setWindow(window)
+            }
         }
     }
 }

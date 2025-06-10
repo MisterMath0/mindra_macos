@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  MindraTimer
 //
-//  Updated with consistent colors and enhanced UI
+//  Updated with modern animations and enhanced UI
 //
 
 import SwiftUI
@@ -46,19 +46,28 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background
+                // Background with title bar color matching
                 AppColors.primaryBackground
                     .ignoresSafeArea()
                 
                 if windowManager.isCompact {
-                    // Compact PiP Mode - Only Timer
+                    // Compact PiP Mode - Enhanced
                     compactPiPView(geometry: geometry)
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.8).combined(with: .opacity),
+                            removal: .scale(scale: 1.1).combined(with: .opacity)
+                        ))
                 } else {
                     // Full Screen Mode
                     fullScreenView(geometry: geometry)
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 1.1).combined(with: .opacity),
+                            removal: .scale(scale: 0.8).combined(with: .opacity)
+                        ))
                 }
             }
         }
+        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: windowManager.isCompact)
         .sheet(isPresented: $showSettings) {
             MindraSettingsView()
                 .environmentObject(statsManager)
@@ -70,13 +79,22 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Compact PiP View
+    // MARK: - Enhanced Compact PiP View
     
     private func compactPiPView(geometry: GeometryProxy) -> some View {
         VStack(spacing: 0) {
+            // Progress indicator at top ONLY when timer is active and has progress
+            if appModeManager.currentMode == .pomodoro && timerManager.isActive && timerManager.progress > 0 {
+                Rectangle()
+                    .fill(timerManager.currentMode.color)
+                    .frame(height: 3)
+                    .scaleEffect(x: timerManager.progress, y: 1, anchor: .leading)
+                    .animation(.easeInOut(duration: 1), value: timerManager.progress)
+            }
+            
             Spacer()
             
-            // Main content centered - Flocus style
+            // Main content centered - Clean minimal style
             if appModeManager.currentMode == .pomodoro {
                 compactTimerDisplay(geometry: geometry)
             } else {
@@ -85,60 +103,102 @@ struct ContentView: View {
             
             Spacer()
             
-            // Minimal controls
+            // Progress dots for pomodoro cycle
+            if appModeManager.currentMode == .pomodoro {
+                pomodoroProgressDots()
+                    .padding(.bottom, 12)
+            }
+            
+            // Enhanced minimal controls
             compactControls(geometry: geometry)
         }
     }
     
-
     private func compactTimerDisplay(geometry: GeometryProxy) -> some View {
-        VStack(spacing: 12) {
-            // Timer display - Flocus style with larger font
+        VStack(spacing: 16) {
+            // Timer display - Responsive and clean
             Text(timerManager.formattedTime)
-                .font(.system(size: 36, weight: .black, design: .rounded))
+                .font(.system(size: min(geometry.size.width * 0.25, 60), weight: .black, design: .rounded))
                 .foregroundColor(AppColors.primaryText)
-                .tracking(2)
+                .tracking(1)
+                .animation(.easeInOut(duration: 0.3), value: timerManager.formattedTime)
             
-            // Start/Pause button - Flocus style
+            // Start/Pause button - Modern style
             Button(action: toggleTimer) {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Image(systemName: timerManager.isActive && !timerManager.isPaused ? "pause.fill" : "play.fill")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                     Text(timerManager.isActive && !timerManager.isPaused ? "Pause" : "Start")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
                 }
                 .foregroundColor(.white)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
                 .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(AppColors.focusColor)
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(timerManager.currentMode.color)
                 )
+                .scaleEffect(1.0)
             }
             .buttonStyle(PlainButtonStyle())
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: timerManager.isActive)
         }
     }
     
     private func compactClockDisplay(geometry: GeometryProxy) -> some View {
         VStack(spacing: 4) {
             Text(getCurrentTime())
-                .font(.system(size: 28, weight: .black, design: .rounded))
+                .font(.system(size: min(geometry.size.width * 0.20, 48), weight: .black, design: .rounded))
                 .foregroundColor(AppColors.primaryText)
                 .tracking(1)
             
             Text(getCurrentDate())
-                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .font(.system(size: min(geometry.size.width * 0.08, 12), weight: .medium, design: .rounded))
                 .foregroundColor(AppColors.secondaryText)
+        }
+    }
+    
+    private func pomodoroProgressDots() -> some View {
+        HStack(spacing: 4) {
+            ForEach(0..<4, id: \.self) { index in
+                Circle()
+                    .fill(index < timerManager.sessionsCompleted ? timerManager.currentMode.color : AppColors.tertiaryText.opacity(0.3))
+                    .frame(width: 4, height: 4)
+                    .animation(.easeInOut(duration: 0.3), value: timerManager.sessionsCompleted)
+            }
         }
     }
     
     private func compactControls(geometry: GeometryProxy) -> some View {
         HStack {
-            // Mode toggle
-            Button(action: { appModeManager.toggleMode() }) {
+            // Back to main view button
+            Button(action: { 
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    windowManager.toggleCompactMode()
+                }
+            }) {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppColors.primaryText)
+                    .frame(width: 24, height: 24)
+                    .background(
+                        Circle()
+                            .fill(AppColors.cardBackground)
+                    )
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            Spacer()
+            
+            // Mode toggle (clock/timer)
+            Button(action: { 
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    appModeManager.toggleMode()
+                }
+            }) {
                 Image(systemName: appModeManager.currentMode == .clock ? "timer" : "clock")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(AppColors.tertiaryText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppColors.secondaryText)
             }
             .buttonStyle(PlainButtonStyle())
             
@@ -147,13 +207,13 @@ struct ContentView: View {
             // Settings
             Button(action: { showSettings = true }) {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(AppColors.tertiaryText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppColors.secondaryText)
             }
             .buttonStyle(PlainButtonStyle())
         }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
     }
     
     // MARK: - Full Screen View
@@ -163,6 +223,7 @@ struct ContentView: View {
             // Top section with quotes (only in focus mode)
             if appModeManager.currentMode == .pomodoro && statsManager.settings.showQuotes {
                 topSection(geometry: geometry)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
             
             // Main content area (better spacing)
@@ -175,6 +236,7 @@ struct ContentView: View {
             // Bottom navigation (properly aligned)
             bottomNavigation(geometry: geometry)
         }
+        .animation(.easeInOut(duration: 0.4), value: appModeManager.currentMode)
     }
     
     // MARK: - Top Section
@@ -183,7 +245,7 @@ struct ContentView: View {
         HStack {
             Spacer()
             
-            // Quote in top-right corner (replaces previous content)
+            // Quote in top-right corner
             if !quotesManager.currentQuote.isEmpty {
                 Text(quotesManager.currentQuote)
                     .font(.system(size: max(12, geometry.size.width * 0.012), weight: .medium, design: .rounded))
@@ -191,6 +253,8 @@ struct ContentView: View {
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: geometry.size.width * 0.35)
                     .lineLimit(2)
+                    .opacity(1.0)
+                    .animation(.easeInOut(duration: 0.5), value: quotesManager.currentQuote)
             }
         }
         .padding(.horizontal, max(32, geometry.size.width * 0.04))
@@ -205,13 +269,22 @@ struct ContentView: View {
             // Focus mode: Show focus prompts
             if statsManager.settings.showGreetings {
                 greetingSection(geometry: geometry)
+                    .transition(.scale.combined(with: .opacity))
             }
             
             // Main display (clock or timer)
             if appModeManager.currentMode == .clock {
                 clockDisplay(geometry: geometry)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.8).combined(with: .opacity),
+                        removal: .scale(scale: 1.2).combined(with: .opacity)
+                    ))
             } else {
                 pomodoroDisplay(geometry: geometry)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 1.2).combined(with: .opacity),
+                        removal: .scale(scale: 0.8).combined(with: .opacity)
+                    ))
             }
         }
     }
@@ -223,13 +296,15 @@ struct ContentView: View {
                 Text(greetingManager.getFocusPrompt())
                     .font(.system(size: max(18, geometry.size.width * 0.022), weight: .medium, design: .rounded))
                     .foregroundColor(AppColors.primaryText)
+                    .animation(.easeInOut(duration: 0.3), value: greetingManager.getFocusPrompt())
                 
-                // Mode selection buttons
+                // Mode selection buttons with animations
                 HStack(spacing: max(12, geometry.size.width * 0.015)) {
                     ForEach(TimerMode.allCases, id: \.self) { mode in
                         modeButton(mode: mode, geometry: geometry)
                     }
                 }
+                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: timerManager.currentMode)
             } else {
                 // Clock mode: Personalized time-dependent greetings
                 let greeting = greetingManager.getGreeting()
@@ -238,13 +313,18 @@ struct ContentView: View {
                         .font(.system(size: max(24, geometry.size.width * 0.028), weight: .medium, design: .rounded))
                         .foregroundColor(AppColors.primaryText)
                         .multilineTextAlignment(.center)
+                        .animation(.easeInOut(duration: 0.5), value: greeting)
                 }
             }
         }
     }
     
     private func modeButton(mode: TimerMode, geometry: GeometryProxy) -> some View {
-        Button(action: { timerManager.setMode(mode) }) {
+        Button(action: { 
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                timerManager.setMode(mode)
+            }
+        }) {
             Text(mode.displayName)
                 .font(.system(size: max(14, geometry.size.width * 0.016), weight: .medium, design: .rounded))
                 .foregroundColor(timerManager.currentMode == mode ? .white : .white.opacity(0.6))
@@ -254,8 +334,10 @@ struct ContentView: View {
                     RoundedRectangle(cornerRadius: max(8, geometry.size.width * 0.01))
                         .fill(timerManager.currentMode == mode ? mode.color : Color.white.opacity(0.08))
                 )
+                .scaleEffect(timerManager.currentMode == mode ? 1.0 : 0.95)
         }
         .buttonStyle(PlainButtonStyle())
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: timerManager.currentMode)
     }
     
     private func clockDisplay(geometry: GeometryProxy) -> some View {
@@ -265,14 +347,16 @@ struct ContentView: View {
                 .font(.system(size: max(120, geometry.size.width * 0.15), weight: .black, design: .rounded))
                 .foregroundColor(.white)
                 .tracking(3)
+                .animation(.easeInOut(duration: 0.3), value: getCurrentTime())
             
             // Date info
             Text(getCurrentDate())
                 .font(.system(size: max(18, geometry.size.width * 0.022), weight: .medium, design: .rounded))
                 .foregroundColor(.white.opacity(0.6))
                 .tracking(0.5)
+                .animation(.easeInOut(duration: 0.3), value: getCurrentDate())
             
-            // Time zone or additional info (to fill space)
+            // Time zone or additional info
             Text(getTimeZoneInfo())
                 .font(.system(size: max(14, geometry.size.width * 0.016), weight: .regular, design: .rounded))
                 .foregroundColor(.white.opacity(0.4))
@@ -287,15 +371,16 @@ struct ContentView: View {
                 .font(.system(size: max(12, geometry.size.width * 0.014), weight: .semibold, design: .rounded))
                 .foregroundColor(.white.opacity(0.6))
                 .tracking(1.5)
+                .animation(.easeInOut(duration: 0.3), value: timerManager.currentMode)
             
-            // Timer display with progress ring
+            // Timer display with enhanced progress ring
             ZStack {
                 // Background circle
                 Circle()
                     .stroke(Color.white.opacity(0.05), lineWidth: 3)
                     .frame(width: max(120, geometry.size.width * 0.15))
                 
-                // Progress circle
+                // Progress circle with smooth animation
                 Circle()
                     .trim(from: 0, to: timerManager.progress)
                     .stroke(
@@ -311,12 +396,13 @@ struct ContentView: View {
                     .font(.system(size: max(48, geometry.size.width * 0.08), weight: .black, design: .rounded))
                     .foregroundColor(.white)
                     .tracking(2)
+                    .animation(.easeInOut(duration: 0.2), value: timerManager.formattedTime)
             }
             
-            // Control buttons
+            // Enhanced control buttons
             timerControls(geometry: geometry)
             
-            // Session counter
+            // Session counter with animation
             if timerManager.sessionsCompleted > 0 {
                 VStack(spacing: 4) {
                     Text("Sessions Completed")
@@ -327,7 +413,9 @@ struct ContentView: View {
                     Text("\(timerManager.sessionsCompleted)")
                         .font(.system(size: max(16, geometry.size.width * 0.02), weight: .semibold, design: .rounded))
                         .foregroundColor(timerManager.currentMode.color)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: timerManager.sessionsCompleted)
                 }
+                .transition(.scale.combined(with: .opacity))
             }
         }
     }
@@ -337,7 +425,11 @@ struct ContentView: View {
             // Reset button
             controlButton(
                 icon: "arrow.clockwise",
-                action: { timerManager.resetTimer() },
+                action: { 
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        timerManager.resetTimer()
+                    }
+                },
                 geometry: geometry,
                 isPrimary: false
             )
@@ -345,7 +437,11 @@ struct ContentView: View {
             // Play/Pause button
             controlButton(
                 icon: timerManager.isActive && !timerManager.isPaused ? "pause.fill" : "play.fill",
-                action: { toggleTimer() },
+                action: { 
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        toggleTimer()
+                    }
+                },
                 geometry: geometry,
                 isPrimary: true
             )
@@ -353,7 +449,11 @@ struct ContentView: View {
             // Skip button
             controlButton(
                 icon: "forward.fill",
-                action: { timerManager.skipTimer() },
+                action: { 
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        timerManager.skipTimer()
+                    }
+                },
                 geometry: geometry,
                 isPrimary: false
             )
@@ -373,11 +473,13 @@ struct ContentView: View {
                     Circle()
                         .fill(isPrimary ? .white : Color.white.opacity(0.08))
                 )
+                .scaleEffect(1.0)
         }
         .buttonStyle(PlainButtonStyle())
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPrimary)
     }
     
-    // MARK: - Bottom Navigation (Perfect Alignment)
+    // MARK: - Bottom Navigation
     
     private func bottomNavigation(geometry: GeometryProxy) -> some View {
         HStack {
@@ -393,13 +495,21 @@ struct ContentView: View {
             HStack(spacing: max(32, geometry.size.width * 0.04)) {
                 navButton(
                     icon: "house.fill",
-                    action: { appModeManager.setMode(.clock) },
+                    action: { 
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                            appModeManager.setMode(.clock)
+                        }
+                    },
                     geometry: geometry,
                     isActive: appModeManager.currentMode == .clock
                 )
                 navButton(
                     icon: "timer",
-                    action: { appModeManager.setMode(.pomodoro) },
+                    action: { 
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                            appModeManager.setMode(.pomodoro)
+                        }
+                    },
                     geometry: geometry,
                     isActive: appModeManager.currentMode == .pomodoro
                 )
@@ -410,9 +520,30 @@ struct ContentView: View {
             
             // Right side controls
             HStack(spacing: max(16, geometry.size.width * 0.02)) {
-                navButton(icon: "rectangle.compress.vertical", action: { windowManager.toggleCompactMode() }, geometry: geometry)
-                navButton(icon: "pin", action: { windowManager.toggleAlwaysOnTop() }, geometry: geometry, isActive: windowManager.isAlwaysOnTop)
-                navButton(icon: "gearshape", action: { showSettings = true }, geometry: geometry)
+                navButton(
+                    icon: "rectangle.compress.vertical", 
+                    action: { 
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            windowManager.toggleCompactMode()
+                        }
+                    }, 
+                    geometry: geometry
+                )
+                navButton(
+                    icon: "pin", 
+                    action: { 
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            windowManager.toggleAlwaysOnTop()
+                        }
+                    }, 
+                    geometry: geometry, 
+                    isActive: windowManager.isAlwaysOnTop
+                )
+                navButton(
+                    icon: "gearshape", 
+                    action: { showSettings = true }, 
+                    geometry: geometry
+                )
             }
             .frame(width: max(120, geometry.size.width * 0.15), alignment: .trailing)
         }
@@ -433,8 +564,10 @@ struct ContentView: View {
                     Circle()
                         .fill(isActive ? timerManager.currentMode.color.opacity(0.15) : Color.clear)
                 )
+                .scaleEffect(isActive ? 1.05 : 1.0)
         }
         .buttonStyle(PlainButtonStyle())
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isActive)
     }
     
     // MARK: - Helper Functions
@@ -446,7 +579,6 @@ struct ContentView: View {
             timerManager.startTimer()
         }
     }
-
     
     private func getCurrentTime() -> String {
         let formatter = DateFormatter()
@@ -464,7 +596,6 @@ struct ContentView: View {
         let timeZone = TimeZone.current.localizedName(for: .standard, locale: .current) ?? "Local Time"
         return timeZone
     }
-
 }
 
 #Preview {

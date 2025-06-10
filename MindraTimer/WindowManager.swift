@@ -22,16 +22,26 @@ class WindowManager: ObservableObject {
     private func setupWindow() {
         guard let window = window else { return }
         
-        // Show native window controls (red, yellow, green buttons)
-        window.standardWindowButton(.closeButton)?.isHidden = false
-        window.standardWindowButton(.miniaturizeButton)?.isHidden = false
-        window.standardWindowButton(.zoomButton)?.isHidden = false
-        
         // Set window properties
         window.isMovableByWindowBackground = true
-        window.titlebarAppearsTransparent = false
-        window.titleVisibility = .visible
         window.title = "MindraTimer"
+        
+        // Set black background for the entire window including title bar
+        window.backgroundColor = NSColor.black
+        window.isOpaque = false
+        
+        // Configure title bar to match app background
+        window.titlebarAppearsTransparent = true
+        
+        // For full mode, we want to see the title but with black background
+        // For PiP mode, title will be hidden in updateWindowMode()
+        window.titleVisibility = .visible
+        
+        // Make sure title bar area is black
+        if let titleBarView = window.standardWindowButton(.closeButton)?.superview {
+            titleBarView.wantsLayer = true
+            titleBarView.layer?.backgroundColor = NSColor.black.cgColor
+        }
         
         updateWindowMode()
     }
@@ -49,25 +59,50 @@ class WindowManager: ObservableObject {
     private func updateWindowMode() {
         guard let window = window else { return }
         
-        // Set window level
-        window.level = isAlwaysOnTop ? .floating : .normal
-        
-        // Update window size with smooth animation
-        let newSize = NSSize(
-            width: isCompact ? 260 : 1000,
-            height: isCompact ? 140 : 700
-        )
-        
-        // Set minimum and maximum sizes
         if isCompact {
-            window.minSize = NSSize(width: 260, height: 140)
-            window.maxSize = NSSize(width: 260, height: 140)
+            // PiP mode: Always on top, resizable, hide native controls
+            window.level = .floating
+            
+            // Hide native window controls (red/yellow/green buttons)
+            window.standardWindowButton(.closeButton)?.isHidden = true
+            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            window.standardWindowButton(.zoomButton)?.isHidden = true
+            
+            // Make it resizable with proper size constraints
+            window.styleMask = [.titled, .resizable]
+            window.minSize = NSSize(width: 240, height: 140)
+            window.maxSize = NSSize(width: 400, height: 300)
+            
+            // Hide title bar completely
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            
+            // Set initial size
+            let newSize = NSSize(width: 280, height: 160)
+            window.setContentSize(newSize)
+            
         } else {
+            // Full mode: Normal window behavior
+            window.level = isAlwaysOnTop ? .floating : .normal
+            
+            // Show native window controls
+            window.standardWindowButton(.closeButton)?.isHidden = false
+            window.standardWindowButton(.miniaturizeButton)?.isHidden = false
+            window.standardWindowButton(.zoomButton)?.isHidden = false
+            
+            // Full window styling
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             window.minSize = NSSize(width: 800, height: 600)
             window.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+            
+            // Show title bar
+            window.titleVisibility = .visible
+            window.titlebarAppearsTransparent = true
+            
+            // Set full size
+            let newSize = NSSize(width: 1000, height: 700)
+            window.setContentSize(newSize)
         }
-        
-        window.setContentSize(newSize)
         
         // Center window when switching modes
         if let screen = window.screen {
@@ -76,17 +111,6 @@ class WindowManager: ObservableObject {
             let centerX = screenFrame.midX - windowFrame.width / 2
             let centerY = screenFrame.midY - windowFrame.height / 2
             window.setFrameOrigin(NSPoint(x: centerX, y: centerY))
-        }
-        
-        // Update window style for compact mode
-        if isCompact {
-            window.styleMask.remove(.resizable)
-            window.titlebarAppearsTransparent = true
-            window.titleVisibility = .hidden
-        } else {
-            window.styleMask.insert(.resizable)
-            window.titlebarAppearsTransparent = false
-            window.titleVisibility = .visible
         }
     }
 }
