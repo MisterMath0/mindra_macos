@@ -16,6 +16,13 @@ struct MindraTimerApp: App {
     @StateObject private var quotesManager = QuotesManager()
     @StateObject private var greetingManager = GreetingManager()
     
+    init() {
+        // Set appearance when the app is ready
+        DispatchQueue.main.async {
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -36,7 +43,7 @@ struct MindraTimerApp: App {
                     greetingManager.setUserName(userName)
                 }
         }
-        .windowStyle(.automatic)
+        .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentMinSize) // Always allow resizing
     }
 }

@@ -17,6 +17,37 @@ class WindowManager: ObservableObject {
     func setWindow(_ window: NSWindow) {
         self.window = window
         setupWindow()
+        
+        // Add notification observer for window focus changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowDidResignKey),
+            name: NSWindow.didResignKeyNotification,
+            object: window
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowDidBecomeKey),
+            name: NSWindow.didBecomeKeyNotification,
+            object: window
+        )
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    @objc private func windowDidResignKey() {
+        guard let window = window else { return }
+        // Maintain dark appearance when window loses focus
+        window.appearance = NSAppearance(named: .darkAqua)
+    }
+    
+    @objc private func windowDidBecomeKey() {
+        guard let window = window else { return }
+        // Ensure dark appearance when window gains focus
+        window.appearance = NSAppearance(named: .darkAqua)
     }
     
     private func setupWindow() {
@@ -26,22 +57,15 @@ class WindowManager: ObservableObject {
         window.isMovableByWindowBackground = true
         window.title = "MindraTimer"
         
-        // Set black background for the entire window including title bar
+        // Set window appearance and style
+        window.appearance = NSAppearance(named: .darkAqua)
         window.backgroundColor = NSColor.black
         window.isOpaque = false
         
-        // Configure title bar to match app background
+        // Configure title bar
         window.titlebarAppearsTransparent = true
-        
-        // For full mode, we want to see the title but with black background
-        // For PiP mode, title will be hidden in updateWindowMode()
         window.titleVisibility = .visible
-        
-        // Make sure title bar area is black
-        if let titleBarView = window.standardWindowButton(.closeButton)?.superview {
-            titleBarView.wantsLayer = true
-            titleBarView.layer?.backgroundColor = NSColor.black.cgColor
-        }
+        window.styleMask.insert(.fullSizeContentView)
         
         updateWindowMode()
     }
@@ -69,7 +93,7 @@ class WindowManager: ObservableObject {
             window.standardWindowButton(.zoomButton)?.isHidden = true
             
             // Make it resizable with proper size constraints
-            window.styleMask = [.titled, .resizable]
+            window.styleMask = [.titled, .resizable, .fullSizeContentView]
             window.minSize = NSSize(width: 240, height: 140)
             window.maxSize = NSSize(width: 400, height: 300)
             
@@ -91,7 +115,7 @@ class WindowManager: ObservableObject {
             window.standardWindowButton(.zoomButton)?.isHidden = false
             
             // Full window styling
-            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             window.minSize = NSSize(width: 800, height: 600)
             window.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
             
@@ -103,6 +127,9 @@ class WindowManager: ObservableObject {
             let newSize = NSSize(width: 1000, height: 700)
             window.setContentSize(newSize)
         }
+        
+        // Re-apply appearance settings
+        window.appearance = NSAppearance(named: .darkAqua)
         
         // Center window when switching modes
         if let screen = window.screen {
