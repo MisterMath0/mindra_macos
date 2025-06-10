@@ -113,7 +113,7 @@ class TimerManager: ObservableObject {
         stopTimer()
         
         // Save as incomplete if there was an active session
-        if let sessionId = currentSessionId {
+        if currentSessionId != nil {
             statsManager?.resetSession()
             currentSessionId = nil
         }
@@ -123,8 +123,8 @@ class TimerManager: ObservableObject {
     
     func skipTimer() {
         // Save current session as incomplete
-        if let sessionId = currentSessionId {
-            statsManager?.skipSession(sessionId: sessionId, mode: currentMode, duration: currentModeDuration)
+        if currentSessionId != nil {
+            statsManager?.skipSession(sessionId: currentSessionId!, mode: currentMode, duration: currentModeDuration)
             currentSessionId = nil
         }
         
@@ -152,9 +152,9 @@ class TimerManager: ObservableObject {
         stopTimer()
         
         // Complete the session
-        if let sessionId = currentSessionId {
+        if currentSessionId != nil {
             statsManager?.completeSession(
-                sessionId: sessionId,
+                sessionId: currentSessionId!,
                 mode: currentMode,
                 duration: currentModeDuration,
                 completed: true

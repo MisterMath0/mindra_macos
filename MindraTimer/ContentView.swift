@@ -2,16 +2,44 @@
 //  ContentView.swift
 //  MindraTimer
 //
-//  Created by Guy Mathieu Foko on 09.06.25.
+//  Updated with consistent colors and enhanced UI
 //
 
 import SwiftUI
+
+// MARK: - App Colors (Consistent Color Scheme)
+
+struct AppColors {
+    // Primary colors matching main app
+    static let primaryBackground = Color(red: 0.05, green: 0.05, blue: 0.05)
+    static let sidebarBackground = Color(red: 0.04, green: 0.04, blue: 0.04)
+    static let cardBackground = Color(red: 0.08, green: 0.08, blue: 0.08)
+    static let selectedBackground = Color.white.opacity(0.1)
+    
+    // Text colors
+    static let primaryText = Color.white
+    static let secondaryText = Color.white.opacity(0.7)
+    static let tertiaryText = Color.white.opacity(0.5)
+    
+    // Accent colors matching timer modes
+    static let focusColor = Color(red: 0.6, green: 0.4, blue: 0.9) // Purple like main app
+    static let shortBreakColor = Color(red: 0.9, green: 0.5, blue: 0.7) // Pink
+    static let longBreakColor = Color(red: 0.3, green: 0.6, blue: 0.9) // Blue
+    
+    // UI colors
+    static let dividerColor = Color.white.opacity(0.1)
+    static let errorColor = Color.red
+    static let successColor = Color.green
+    static let warningColor = Color.orange
+}
 
 struct ContentView: View {
     @EnvironmentObject var windowManager: WindowManager
     @EnvironmentObject var statsManager: StatsManager
     @EnvironmentObject var timerManager: TimerManager
     @EnvironmentObject var appModeManager: AppModeManager
+    @EnvironmentObject var quotesManager: QuotesManager
+    @EnvironmentObject var greetingManager: GreetingManager
     
     @State private var showSettings = false
     
@@ -19,7 +47,7 @@ struct ContentView: View {
         GeometryReader { geometry in
             ZStack {
                 // Background
-                Color(red: 0.05, green: 0.05, blue: 0.05) // Modern dark gray instead of pure black
+                AppColors.primaryBackground
                     .ignoresSafeArea()
                 
                 if windowManager.isCompact {
@@ -37,6 +65,8 @@ struct ContentView: View {
                 .environmentObject(timerManager)
                 .environmentObject(windowManager)
                 .environmentObject(appModeManager)
+                .environmentObject(quotesManager)
+                .environmentObject(greetingManager)
         }
     }
     
@@ -44,14 +74,9 @@ struct ContentView: View {
     
     private func compactPiPView(geometry: GeometryProxy) -> some View {
         VStack(spacing: 0) {
-            // Progress bar at top
-            if appModeManager.currentMode == .pomodoro {
-                progressBar(geometry: geometry)
-            }
-            
             Spacer()
             
-            // Only timer content in PiP mode
+            // Main content centered - Flocus style
             if appModeManager.currentMode == .pomodoro {
                 compactTimerDisplay(geometry: geometry)
             } else {
@@ -65,57 +90,30 @@ struct ContentView: View {
         }
     }
     
-    private func progressBar(geometry: GeometryProxy) -> some View {
-        VStack(spacing: 0) {
-            // Progress bar
-            Rectangle()
-                .fill(Color.white.opacity(0.1))
-                .frame(height: 2)
-                .overlay(
-                    Rectangle()
-                        .fill(timerManager.currentMode.color)
-                        .frame(width: geometry.size.width * timerManager.progress)
-                        .animation(.easeInOut(duration: 1), value: timerManager.progress),
-                    alignment: .leading
-                )
-            
-            // Mode indicator
-            HStack {
-                Text(timerManager.currentMode.displayName)
-                    .font(.system(size: 8, weight: .medium, design: .rounded))
-                    .foregroundColor(.white.opacity(0.6))
-                    .tracking(0.5)
-                
-                Spacer()
-                
-                // Expand button
-                Button(action: { windowManager.toggleCompactMode() }) {
-                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 8, weight: .medium))
-                        .foregroundColor(.white.opacity(0.5))
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-        }
-    }
-    
+
     private func compactTimerDisplay(geometry: GeometryProxy) -> some View {
-        VStack(spacing: 8) {
-            // Timer display
+        VStack(spacing: 12) {
+            // Timer display - Flocus style with larger font
             Text(timerManager.formattedTime)
-                .font(.system(size: 32, weight: .black, design: .rounded))
-                .foregroundColor(.white)
-                .tracking(1)
+                .font(.system(size: 36, weight: .black, design: .rounded))
+                .foregroundColor(AppColors.primaryText)
+                .tracking(2)
             
-            // Play/Pause button
+            // Start/Pause button - Flocus style
             Button(action: toggleTimer) {
-                Image(systemName: timerManager.isActive && !timerManager.isPaused ? "pause.fill" : "play.fill")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.black)
-                    .frame(width: 36, height: 36)
-                    .background(Circle().fill(.white))
+                HStack(spacing: 8) {
+                    Image(systemName: timerManager.isActive && !timerManager.isPaused ? "pause.fill" : "play.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(timerManager.isActive && !timerManager.isPaused ? "Pause" : "Start")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(AppColors.focusColor)
+                )
             }
             .buttonStyle(PlainButtonStyle())
         }
@@ -125,12 +123,12 @@ struct ContentView: View {
         VStack(spacing: 4) {
             Text(getCurrentTime())
                 .font(.system(size: 28, weight: .black, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(AppColors.primaryText)
                 .tracking(1)
             
             Text(getCurrentDate())
                 .font(.system(size: 10, weight: .medium, design: .rounded))
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(AppColors.secondaryText)
         }
     }
     
@@ -140,7 +138,7 @@ struct ContentView: View {
             Button(action: { appModeManager.toggleMode() }) {
                 Image(systemName: appModeManager.currentMode == .clock ? "timer" : "clock")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(AppColors.tertiaryText)
             }
             .buttonStyle(PlainButtonStyle())
             
@@ -150,7 +148,7 @@ struct ContentView: View {
             Button(action: { showSettings = true }) {
                 Image(systemName: "gearshape")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(AppColors.tertiaryText)
             }
             .buttonStyle(PlainButtonStyle())
         }
@@ -162,8 +160,10 @@ struct ContentView: View {
     
     private func fullScreenView(geometry: GeometryProxy) -> some View {
         VStack(spacing: 0) {
-            // Top section with quote only
-            topSection(geometry: geometry)
+            // Top section with quotes (only in focus mode)
+            if appModeManager.currentMode == .pomodoro && statsManager.settings.showQuotes {
+                topSection(geometry: geometry)
+            }
             
             // Main content area (better spacing)
             Spacer(minLength: max(60, geometry.size.height * 0.08))
@@ -183,13 +183,15 @@ struct ContentView: View {
         HStack {
             Spacer()
             
-            // Quote/motivational text (right aligned)
-            Text(getMotivationalQuote())
-                .font(.system(size: max(12, geometry.size.width * 0.012), weight: .medium, design: .rounded))
-                .foregroundColor(.white.opacity(0.7))
-                .multilineTextAlignment(.trailing)
-                .frame(maxWidth: geometry.size.width * 0.35)
-                .lineLimit(2)
+            // Quote in top-right corner (replaces previous content)
+            if !quotesManager.currentQuote.isEmpty {
+                Text(quotesManager.currentQuote)
+                    .font(.system(size: max(12, geometry.size.width * 0.012), weight: .medium, design: .rounded))
+                    .foregroundColor(AppColors.secondaryText)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: geometry.size.width * 0.35)
+                    .lineLimit(2)
+            }
         }
         .padding(.horizontal, max(32, geometry.size.width * 0.04))
         .padding(.top, max(24, geometry.size.height * 0.03))
@@ -199,8 +201,11 @@ struct ContentView: View {
     
     private func mainContentArea(geometry: GeometryProxy) -> some View {
         VStack(spacing: max(32, geometry.size.height * 0.04)) {
-            // Greeting
-            greetingSection(geometry: geometry)
+            // Clock mode: Show personalized greetings
+            // Focus mode: Show focus prompts
+            if statsManager.settings.showGreetings {
+                greetingSection(geometry: geometry)
+            }
             
             // Main display (clock or timer)
             if appModeManager.currentMode == .clock {
@@ -214,10 +219,10 @@ struct ContentView: View {
     private func greetingSection(geometry: GeometryProxy) -> some View {
         VStack(spacing: max(16, geometry.size.height * 0.02)) {
             if appModeManager.currentMode == .pomodoro {
-                // Task focus question
-                Text("What do you want to focus on?")
+                // Focus mode: Task focus question
+                Text(greetingManager.getFocusPrompt())
                     .font(.system(size: max(18, geometry.size.width * 0.022), weight: .medium, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppColors.primaryText)
                 
                 // Mode selection buttons
                 HStack(spacing: max(12, geometry.size.width * 0.015)) {
@@ -226,10 +231,14 @@ struct ContentView: View {
                     }
                 }
             } else {
-                // Clock greeting
-                Text(getGreeting())
-                    .font(.system(size: max(18, geometry.size.width * 0.022), weight: .medium, design: .rounded))
-                    .foregroundColor(.white)
+                // Clock mode: Personalized time-dependent greetings
+                let greeting = greetingManager.getGreeting()
+                if !greeting.isEmpty {
+                    Text(greeting)
+                        .font(.system(size: max(24, geometry.size.width * 0.028), weight: .medium, design: .rounded))
+                        .foregroundColor(AppColors.primaryText)
+                        .multilineTextAlignment(.center)
+                }
             }
         }
     }
@@ -437,20 +446,7 @@ struct ContentView: View {
             timerManager.startTimer()
         }
     }
-    
-    private func getGreeting() -> String {
-        let hour = Calendar.current.component(.hour, from: Date())
-        let name = "Math" // You can make this dynamic later
-        
-        switch hour {
-        case 0..<12:
-            return "Good morning, \(name)."
-        case 12..<17:
-            return "Good afternoon, \(name)."
-        default:
-            return "Good evening, \(name)."
-        }
-    }
+
     
     private func getCurrentTime() -> String {
         let formatter = DateFormatter()
@@ -468,16 +464,7 @@ struct ContentView: View {
         let timeZone = TimeZone.current.localizedName(for: .standard, locale: .current) ?? "Local Time"
         return timeZone
     }
-    
-    private func getMotivationalQuote() -> String {
-        let quotes = [
-            "Focus on progress, not perfection.",
-            "Your potential is endless.",
-            "Great things never come from comfort zones.",
-            "Success is built one focused session at a time."
-        ]
-        return quotes.randomElement() ?? quotes[0]
-    }
+
 }
 
 #Preview {
@@ -486,4 +473,6 @@ struct ContentView: View {
         .environmentObject(StatsManager())
         .environmentObject(TimerManager())
         .environmentObject(AppModeManager())
+        .environmentObject(QuotesManager())
+        .environmentObject(GreetingManager())
 }

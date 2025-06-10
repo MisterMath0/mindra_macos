@@ -1,10 +1,3 @@
-//
-//  ThemeManager.swift
-//  MindraTimer
-//
-//  Created by Guy Mathieu Foko on 09.06.25.
-//
-
 import SwiftUI
 
 enum AppTheme: String, CaseIterable {
@@ -77,4 +70,4 @@ class ThemeManager: ObservableObject {
         case .light: return Color.black.opacity(0.2)
         }
     }
-}
+} 

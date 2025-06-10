@@ -13,6 +13,8 @@ struct MindraTimerApp: App {
     @StateObject private var statsManager = StatsManager()
     @StateObject private var timerManager = TimerManager()
     @StateObject private var appModeManager = AppModeManager()
+    @StateObject private var quotesManager = QuotesManager()
+    @StateObject private var greetingManager = GreetingManager()
     
     var body: some Scene {
         WindowGroup {
@@ -21,6 +23,8 @@ struct MindraTimerApp: App {
                 .environmentObject(statsManager)
                 .environmentObject(timerManager)
                 .environmentObject(appModeManager)
+                .environmentObject(quotesManager)
+                .environmentObject(greetingManager)
                 .frame(
                     minWidth: windowManager.isCompact ? 260 : 800,
                     maxWidth: windowManager.isCompact ? 260 : .infinity,
@@ -31,6 +35,11 @@ struct MindraTimerApp: App {
                 .onAppear {
                     // Connect timer manager with stats manager
                     timerManager.setStatsManager(statsManager)
+                    
+                    // Set up user name synchronization
+                    let userName = UserDefaults.standard.string(forKey: "userName")
+                    quotesManager.setUserName(userName)
+                    greetingManager.setUserName(userName)
                 }
         }
         .windowStyle(.automatic)

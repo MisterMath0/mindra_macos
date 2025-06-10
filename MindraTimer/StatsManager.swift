@@ -160,7 +160,7 @@ class StatsManager: ObservableObject {
     }
     
     func resetSession() {
-        if let sessionId = currentSessionId, sessionStartTime != nil {
+        if currentSessionId != nil, sessionStartTime != nil {
             print("🔄 Session reset - saving as incomplete")
         }
         
