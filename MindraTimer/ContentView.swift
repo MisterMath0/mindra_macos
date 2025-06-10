@@ -292,12 +292,6 @@ struct ContentView: View {
     private func greetingSection(geometry: GeometryProxy) -> some View {
         VStack(spacing: max(16, geometry.size.height * 0.02)) {
             if appModeManager.currentMode == .pomodoro {
-                // Focus mode: Task focus question
-                Text(greetingManager.getFocusPrompt())
-                    .font(.system(size: max(18, geometry.size.width * 0.022), weight: .medium, design: .rounded))
-                    .foregroundColor(AppColors.primaryText)
-                    .animation(.easeInOut(duration: 0.3), value: greetingManager.getFocusPrompt())
-                
                 // Mode selection buttons with animations
                 HStack(spacing: max(12, geometry.size.width * 0.015)) {
                     ForEach(TimerMode.allCases, id: \.self) { mode in
