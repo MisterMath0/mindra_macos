@@ -5,7 +5,7 @@ struct SoundPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var statsManager: StatsManager
     
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 4)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 3)
     @State private var selectedSound: SoundOption?
     @State private var isPlaying = false
     @State private var audioPlayer: AVAudioPlayer?
@@ -16,8 +16,7 @@ struct SoundPickerView: View {
         .bellSoft: "🔔",
         .bellLoud: "🔔",
         .trainArrival: "🚂",
-        .commuterJingle: "🎶",
-        .gameShow: "🎮"
+        .commuterJingle: "🎶"
     ]
     
     var body: some View {
@@ -37,14 +36,12 @@ struct SoundPickerView: View {
             }
             
             // Sound grid
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(SoundOption.allCases, id: \.self) { sound in
-                        soundButton(sound)
-                    }
+            LazyVGrid(columns: columns, spacing: 16) {
+                ForEach(SoundOption.allCases, id: \.self) { sound in
+                    soundButton(sound)
                 }
-                .padding(.horizontal)
             }
+            .padding(.horizontal)
             
             // Volume slider
             VStack(alignment: .leading, spacing: 8) {
@@ -67,7 +64,7 @@ struct SoundPickerView: View {
             .padding(.horizontal)
         }
         .padding(24)
-        .frame(width: 400, height: 500)
+        .frame(width: 400, height: 400)
         .background(AppColors.primaryBackground)
     }
     
@@ -85,7 +82,6 @@ struct SoundPickerView: View {
                 .replacingOccurrences(of: "bellLoud", with: "bell-loud")
                 .replacingOccurrences(of: "trainArrival", with: "train-arrival")
                 .replacingOccurrences(of: "commuterJingle", with: "commuter-jingle")
-                .replacingOccurrences(of: "gameShow", with: "game-show")
             
             // Try to load and play the sound
             if let url = Bundle.main.url(forResource: soundFileName, withExtension: "mp3") {
@@ -105,7 +101,7 @@ struct SoundPickerView: View {
         }) {
             VStack(spacing: 8) {
                 Text(soundEmojis[sound] ?? "🎵")
-                    .font(.system(size: 32))
+                    .font(.system(size: 24))
                 Text(sound.displayName)
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundColor(AppColors.secondaryText)

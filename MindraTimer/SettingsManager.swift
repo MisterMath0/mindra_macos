@@ -34,7 +34,6 @@ enum SoundOption: String, CaseIterable {
     case bellLoud = "bellLoud"
     case trainArrival = "trainArrival"
     case commuterJingle = "commuterJingle"
-    case gameShow = "gameShow"
     
     var displayName: String {
         switch self {
@@ -44,7 +43,6 @@ enum SoundOption: String, CaseIterable {
         case .bellLoud: return "Bell (Loud)"
         case .trainArrival: return "Train Arrival"
         case .commuterJingle: return "Commuter Jingle"
-        case .gameShow: return "Game Show"
         }
     }
 }

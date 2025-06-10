@@ -90,11 +90,17 @@ struct MindraSettingsView: View {
     private func sidebar(geometry: GeometryProxy) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(AppColors.secondaryText)
+                }
+                .buttonStyle(PlainButtonStyle())
+                
                 Text("Settings")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundColor(AppColors.primaryText)
                 Spacer()
-                // Remove the close button from here - it should be native macOS button
             }
             .padding(.horizontal, 24)
             .padding(.top, 24)

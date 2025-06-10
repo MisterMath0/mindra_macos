@@ -282,8 +282,6 @@ class TimerManager: ObservableObject {
             soundFileName = "train-arrival"
         case "commuterJingle":
             soundFileName = "commuter-jingle"
-        case "gameShow":
-            soundFileName = "game-show"
         default:
             // Fallback to system sound
             NSSound.beep()
