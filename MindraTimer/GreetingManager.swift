@@ -34,20 +34,6 @@ class GreetingManager: ObservableObject {
         "Peace and reflection time"
     ]
     
-    // Focus prompts for pomodoro mode
-    private let focusPrompts = [
-        "What do you want to focus on?",
-        "What's your priority today?",
-        "What task needs your attention?",
-        "Ready to make progress on something?",
-        "What will you accomplish today?",
-        "What's the most important thing right now?",
-        "Time to dive deep into what matters",
-        "What deserves your full attention?",
-        "Which goal are you working toward?",
-        "What would make today feel successful?"
-    ]
-    
     init(userName: String? = nil) {
         self.userName = userName
         updateGreetings()
@@ -89,21 +75,9 @@ class GreetingManager: ObservableObject {
         }
     }
     
-    func getFocusPrompt() -> String {
-        let name = getUserDisplayName()
-        let basePrompt = focusPrompts.randomElement() ?? "What do you want to focus on?"
-        
-        // Occasionally personalize the prompt if user has a name
-        if !name.isEmpty && Bool.random() {
-            return "\(name), \(basePrompt.lowercased())"
-        }
-        
-        return basePrompt
-    }
     
     private func updateGreetings() {
         currentGreeting = getGreeting()
-        currentFocusPrompt = getFocusPrompt()
     }
     
     private func getUserDisplayName() -> String {

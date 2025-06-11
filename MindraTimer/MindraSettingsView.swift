@@ -311,6 +311,28 @@ struct MindraSettingsView: View {
                             .accentColor(AppColors.focusColor)
                             
                             VStack(alignment: .leading, spacing: 8) {
+                                Text("Quote Categories")
+                                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                                    .foregroundColor(AppColors.primaryText)
+                                
+                                VStack(alignment: .leading, spacing: 12) {
+                                    ForEach(QuoteCategory.allCases, id: \.self) { category in
+                                        Toggle(category.displayName, isOn: Binding(
+                                            get: { statsManager.settings.selectedQuoteCategories.contains(category) },
+                                            set: { isOn in
+                                                if isOn {
+                                                    statsManager.settings.selectedQuoteCategories.append(category)
+                                                } else {
+                                                    statsManager.settings.selectedQuoteCategories.removeAll { $0 == category }
+                                                }
+                                            }
+                                        ))
+                                        .toggleStyle(SwitchToggleStyle(tint: AppColors.focusColor))
+                                    }
+                                }
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Text("Quote refresh interval")
                                         .font(.system(size: 15, weight: .medium, design: .rounded))
@@ -353,7 +375,7 @@ struct MindraSettingsView: View {
                                 Button("Get New Quote") {
                                     quotesManager.updateQuoteIfNeeded(force: true)
                                 }
-                                .buttonStyle(SecondaryButtonStyle())
+                                .buttonStyle(PrimaryButtonStyle())
                             }
                         }
                     }
