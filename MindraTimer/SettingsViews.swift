@@ -68,9 +68,9 @@ struct TimerSettingsView: View {
                                 
                                 HStack {
                                     Slider(value: $coordinator.soundVolume, in: 0...100, step: 1)
-                                        .onChange(of: coordinator.soundVolume) { newValue in
-                                            coordinator.updateSoundVolume(newValue)
-                                            statsManager.setSoundVolume(newValue)
+                                        .onChange(of: coordinator.soundVolume) { _, newValue in
+                                        coordinator.updateSoundVolume(newValue)
+                                        statsManager.setSoundVolume(newValue)
                                         }
                                     
                                     Text("\(Int(coordinator.soundVolume))%")
@@ -210,7 +210,7 @@ struct QuotesSettingsView: View {
                             
                             Slider(value: $coordinator.quoteInterval, in: 1...60, step: 1)
                                 .accentColor(AppColors.focusColor)
-                                .onChange(of: coordinator.quoteInterval) { newValue in
+                                .onChange(of: coordinator.quoteInterval) { _, newValue in
                                     let intValue = Int(newValue)
                                     coordinator.updateQuoteInterval(newValue)
                                     statsManager.settingsManager.quoteRefreshInterval = intValue
@@ -284,9 +284,9 @@ struct SoundSettingsView: View {
                                 
                                 HStack {
                                     Slider(value: $coordinator.soundVolume, in: 0...100, step: 1)
-                                        .onChange(of: coordinator.soundVolume) { newValue in
-                                            coordinator.updateSoundVolume(newValue)
-                                            statsManager.setSoundVolume(newValue)
+                                        .onChange(of: coordinator.soundVolume) { _, newValue in
+                                        coordinator.updateSoundVolume(newValue)
+                                        statsManager.setSoundVolume(newValue)
                                         }
                                     
                                     Text("\(Int(coordinator.soundVolume))%")
@@ -466,6 +466,17 @@ struct StatsSettingsView: View {
                             statsManager.addTestData()
                         }
                         .buttonStyle(PrimaryButtonStyle())
+                        
+                        Button("Database Debug Info") {
+                            let debugInfo = statsManager.database.getDebugInfo()
+                            print(debugInfo)
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        
+                        Button("Clear All Data") {
+                            statsManager.clearAllData()
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
                     }
                 }
                 #endif

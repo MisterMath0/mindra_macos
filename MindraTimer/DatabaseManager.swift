@@ -65,7 +65,7 @@ enum StatsPeriod: String, CaseIterable {
 
 class DatabaseManager: ObservableObject {
     private var db: OpaquePointer?
-    private let dbPath: String
+    let dbPath: String  // Made public for debugging
     
     init() {
         // Create database in Documents directory
@@ -84,7 +84,13 @@ class DatabaseManager: ObservableObject {
     
     private func openDatabase() {
         if sqlite3_open(dbPath, &db) != SQLITE_OK {
-            print("Unable to open database at \(dbPath)")
+            let errorMessage = String(cString: sqlite3_errmsg(db))
+            print("❌ Unable to open database at \(dbPath): \(errorMessage)")
+        } else {
+            print("✅ Database opened successfully at: \(dbPath)")
+            // Enable foreign keys and other pragmas for better data integrity
+            sqlite3_exec(db, "PRAGMA foreign_keys = ON;", nil, nil, nil)
+            sqlite3_exec(db, "PRAGMA journal_mode = WAL;", nil, nil, nil)
         }
     }
     
@@ -134,17 +140,31 @@ class DatabaseManager: ObservableObject {
             );
         """
         
-        // Execute table creation
-        if sqlite3_exec(db, createSessionsTable, nil, nil, nil) != SQLITE_OK {
-            print("Error creating sessions table")
+        // Execute table creation with better error handling
+        var errorMessage: UnsafeMutablePointer<CChar>?
+        
+        if sqlite3_exec(db, createSessionsTable, nil, nil, &errorMessage) != SQLITE_OK {
+            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
+            print("❌ Error creating sessions table: \(error)")
+            sqlite3_free(errorMessage)
+        } else {
+            print("✅ Sessions table created successfully")
         }
         
-        if sqlite3_exec(db, createSettingsTable, nil, nil, nil) != SQLITE_OK {
-            print("Error creating settings table")
+        if sqlite3_exec(db, createSettingsTable, nil, nil, &errorMessage) != SQLITE_OK {
+            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
+            print("❌ Error creating settings table: \(error)")
+            sqlite3_free(errorMessage)
+        } else {
+            print("✅ Settings table created successfully")
         }
 
-        if sqlite3_exec(db, createAchievementsTable, nil, nil, nil) != SQLITE_OK {
-            print("Error creating achievements table")
+        if sqlite3_exec(db, createAchievementsTable, nil, nil, &errorMessage) != SQLITE_OK {
+            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
+            print("❌ Error creating achievements table: \(error)")
+            sqlite3_free(errorMessage)
+        } else {
+            print("✅ Achievements table created successfully")
         }
         
         // Create indexes for better performance
@@ -164,8 +184,9 @@ class DatabaseManager: ObservableObject {
     // MARK: - Session Management
     
     func addSession(_ session: FocusSession) -> Bool {
+        // Use INSERT OR REPLACE to handle conflicts (UPSERT)
         let insertSQL = """
-            INSERT INTO focus_sessions (id, started_at, ended_at, duration, completed, mode)
+            INSERT OR REPLACE INTO focus_sessions (id, started_at, ended_at, duration, completed, mode)
             VALUES (?, ?, ?, ?, ?, ?)
         """
         
@@ -187,8 +208,15 @@ class DatabaseManager: ObservableObject {
             
             if sqlite3_step(statement) == SQLITE_DONE {
                 sqlite3_finalize(statement)
+                print("✅ Session saved to database: \(session.id)")
                 return true
+            } else {
+                let errorMessage = String(cString: sqlite3_errmsg(db))
+                print("❌ Failed to save session: \(errorMessage)")
             }
+        } else {
+            let errorMessage = String(cString: sqlite3_errmsg(db))
+            print("❌ Failed to prepare session insert: \(errorMessage)")
         }
         
         sqlite3_finalize(statement)
@@ -453,8 +481,9 @@ class DatabaseManager: ObservableObject {
     // MARK: - Achievement Management
     
     func addAchievement(_ achievement: Achievement) -> Bool {
+        // Use INSERT OR REPLACE to handle conflicts (UPSERT)
         let insertSQL = """
-            INSERT INTO achievements (id, title, description, icon, type, progress, target, unlocked, unlocked_date)
+            INSERT OR REPLACE INTO achievements (id, title, description, icon, type, progress, target, unlocked, unlocked_date)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         
@@ -478,8 +507,15 @@ class DatabaseManager: ObservableObject {
             
             if sqlite3_step(statement) == SQLITE_DONE {
                 sqlite3_finalize(statement)
+                print("✅ Achievement saved to database: \(achievement.title)")
                 return true
+            } else {
+                let errorMessage = String(cString: sqlite3_errmsg(db))
+                print("❌ Failed to save achievement: \(errorMessage)")
             }
+        } else {
+            let errorMessage = String(cString: sqlite3_errmsg(db))
+            print("❌ Failed to prepare achievement insert: \(errorMessage)")
         }
         
         sqlite3_finalize(statement)
@@ -564,5 +600,84 @@ class DatabaseManager: ObservableObject {
         
         sqlite3_finalize(statement)
         return achievements
+    }
+    
+    // MARK: - Debug and Maintenance Methods
+    
+    func getDebugInfo() -> String {
+        let fileManager = FileManager.default
+        var dbSize: Int64 = 0
+        
+        if let attributes = try? fileManager.attributesOfItem(atPath: dbPath) {
+            dbSize = attributes[.size] as? Int64 ?? 0
+        }
+        
+        // Test database connectivity
+        let isConnected = (db != nil)
+        
+        // Count records in each table
+        var sessionCount = 0
+        var achievementCount = 0
+        var settingCount = 0
+        
+        var statement: OpaquePointer?
+        
+        // Count sessions
+        if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM focus_sessions", -1, &statement, nil) == SQLITE_OK {
+            if sqlite3_step(statement) == SQLITE_ROW {
+                sessionCount = Int(sqlite3_column_int(statement, 0))
+            }
+        }
+        sqlite3_finalize(statement)
+        
+        // Count achievements  
+        if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM achievements", -1, &statement, nil) == SQLITE_OK {
+            if sqlite3_step(statement) == SQLITE_ROW {
+                achievementCount = Int(sqlite3_column_int(statement, 0))
+            }
+        }
+        sqlite3_finalize(statement)
+        
+        // Count settings
+        if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM settings", -1, &statement, nil) == SQLITE_OK {
+            if sqlite3_step(statement) == SQLITE_ROW {
+                settingCount = Int(sqlite3_column_int(statement, 0))
+            }
+        }
+        sqlite3_finalize(statement)
+        
+        return """
+        📊 Database Debug Info:
+        • Path: \(dbPath)
+        • Size: \(ByteCountFormatter.string(fromByteCount: dbSize, countStyle: .file))
+        • Connected: \(isConnected ? "✅" : "❌")
+        • Sessions: \(sessionCount)
+        • Achievements: \(achievementCount) 
+        • Settings: \(settingCount)
+        """
+    }
+    
+    func clearAllData() {
+        var errorMessage: UnsafeMutablePointer<CChar>?
+        
+        if sqlite3_exec(db, "DELETE FROM focus_sessions;", nil, nil, &errorMessage) != SQLITE_OK {
+            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
+            print("❌ Failed to clear sessions: \(error)")
+            sqlite3_free(errorMessage)
+        }
+        
+        if sqlite3_exec(db, "DELETE FROM achievements;", nil, nil, &errorMessage) != SQLITE_OK {
+            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
+            print("❌ Failed to clear achievements: \(error)")
+            sqlite3_free(errorMessage)
+        }
+        
+        if sqlite3_exec(db, "DELETE FROM settings;", nil, nil, &errorMessage) != SQLITE_OK {
+            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
+            print("❌ Failed to clear settings: \(error)")
+            sqlite3_free(errorMessage)
+        }
+        
+        print("🗑️ Database cleared")
     }
 }

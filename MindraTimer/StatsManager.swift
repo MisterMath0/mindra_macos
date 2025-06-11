@@ -29,13 +29,17 @@ class StatsManager: ObservableObject {
     @Published var settingsManager: SettingsManager
     @Published private(set) var achievements: [Achievement] = []
     
-    private let database: DatabaseManager
+    let database: DatabaseManager  // Made public for debugging
     private var currentSessionId: String?
     private var sessionStartTime: Date?
     
     init() {
         self.database = DatabaseManager()
         self.settingsManager = SettingsManager()
+        
+        // Migrate sessionsCompleted from UserDefaults to database if needed
+        migrateUserDefaultsToDatabase()
+        
         fetchStats(for: settingsManager.displayPeriod)
         loadAchievements()
         initializeDefaultAchievements()
@@ -326,6 +330,9 @@ class StatsManager: ObservableObject {
             if database.updateSessionCompletion(sessionId: sessionId, completed: completed) {
                 // Update achievements based on session completion
                 if completed && mode == .focus {
+                    // Increment sessions completed count in database
+                    incrementSessionsCompleted()
+                    
                     // Update focus time achievement (accumulate total time)
                     updateAchievementProgress(type: .totalFocusTime, progress: Double(duration) / 60.0)
                     
@@ -387,6 +394,10 @@ class StatsManager: ObservableObject {
     // MARK: - Debug Methods
     
     func clearAllData() {
+        // Clear database
+        database.clearAllData()
+        
+        // Clear in-memory data
         sessions.removeAll()
         summary = StatsSummary(
             totalSessions: 0,
@@ -399,8 +410,12 @@ class StatsManager: ObservableObject {
             totalTasksCompleted: 0
         )
         chartData.removeAll()
+        achievements.removeAll()
         
-        print("🗑️ All stats data cleared")
+        // Reinitialize achievements
+        initializeDefaultAchievements()
+        
+        print("🗑️ All stats data cleared and reset")
     }
     
     func addTestData() {
@@ -487,6 +502,12 @@ class StatsManager: ObservableObject {
         print("   Total Focus Time: \(summary.totalFocusTime) minutes")
         print("   Current Streak: \(summary.currentStreak) days")
         print("   Completion Rate: \(String(format: "%.1f", summary.completionRate))%")
+        
+        // Check database integrity
+        print("   Database Path: \(database.dbPath)")
+        let testSession = FocusSession(startedAt: Date(), duration: 60, completed: true, mode: .focus)
+        let canWrite = database.addSession(testSession)
+        print("   Database Write Test: \(canWrite ? "✅ OK" : "❌ FAILED")")
     }
     
     func forceRefreshAchievements() {
@@ -497,5 +518,44 @@ class StatsManager: ObservableObject {
             initializeDefaultAchievements()
         }
         print("✅ Achievements refresh complete: \(achievements.count) achievements loaded")
+    }
+    
+    // MARK: - Migration from UserDefaults to Database
+    
+    private func migrateUserDefaultsToDatabase() {
+        let migrationKey = "stats_migrated_v1"
+        
+        // Check if we've already migrated
+        if database.getSetting(key: migrationKey, type: Bool.self, defaultValue: false) {
+            return
+        }
+        
+        print("🔄 Migrating UserDefaults data to database...")
+        
+        // Migrate sessionsCompleted from UserDefaults
+        let oldSessionsCompleted = UserDefaults.standard.integer(forKey: "sessionsCompleted")
+        if oldSessionsCompleted > 0 {
+            print("📊 Migrating \(oldSessionsCompleted) completed sessions from UserDefaults")
+            database.setSetting(key: "sessionsCompleted", value: oldSessionsCompleted)
+            
+            // Clear the old UserDefaults value
+            UserDefaults.standard.removeObject(forKey: "sessionsCompleted")
+        }
+        
+        // Mark migration as complete
+        database.setSetting(key: migrationKey, value: true)
+        print("✅ UserDefaults migration completed")
+    }
+    
+    // Get sessions completed count from database instead of UserDefaults
+    var sessionsCompletedCount: Int {
+        return database.getSetting(key: "sessionsCompleted", type: Int.self, defaultValue: 0)
+    }
+    
+    // Update sessions completed count in database
+    private func incrementSessionsCompleted() {
+        let currentCount = sessionsCompletedCount
+        database.setSetting(key: "sessionsCompleted", value: currentCount + 1)
+        print("📊 Sessions completed count updated: \(currentCount + 1)")
     }
 }
