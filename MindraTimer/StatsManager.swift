@@ -38,6 +38,7 @@ class StatsManager: ObservableObject {
         self.settingsManager = SettingsManager()
         fetchStats(for: settingsManager.displayPeriod)
         loadAchievements()
+        initializeDefaultAchievements()
     }
     
     // MARK: - Computed Properties for easy access
@@ -122,19 +123,149 @@ class StatsManager: ObservableObject {
         achievements = database.getAchievements()
     }
     
-    func updateAchievementProgress(type: Achievement.AchievementType, progress: Double) {
-        if let index = achievements.firstIndex(where: { $0.type == type }) {
-            var achievement = achievements[index]
-            achievement.progress = progress
+    private func initializeDefaultAchievements() {
+        // Check if achievements already exist
+        if achievements.isEmpty {
+            let defaultAchievements = createDefaultAchievements()
             
-            if achievement.isCompleted && !achievement.unlocked {
-                achievement.unlocked = true
-                achievement.unlockedDate = Date()
-                // TODO: Show achievement unlocked notification
+            for achievement in defaultAchievements {
+                if database.addAchievement(achievement) {
+                    print("✅ Created achievement: \(achievement.title)")
+                } else {
+                    print("❌ Failed to create achievement: \(achievement.title)")
+                }
             }
             
-            if database.updateAchievement(achievement) {
-                achievements[index] = achievement
+            // Reload achievements from database
+            loadAchievements()
+        }
+    }
+    
+    private func createDefaultAchievements() -> [Achievement] {
+        return [
+            Achievement(
+                id: UUID(),
+                title: "First Focus",
+                description: "Complete your first focus session",
+                icon: "🎯",
+                type: .sessionsCompleted,
+                progress: 0,
+                target: 1,
+                unlocked: false,
+                unlockedDate: nil
+            ),
+            Achievement(
+                id: UUID(),
+                title: "Focus Master",
+                description: "Complete 10 focus sessions",
+                icon: "🏆",
+                type: .sessionsCompleted,
+                progress: 0,
+                target: 10,
+                unlocked: false,
+                unlockedDate: nil
+            ),
+            Achievement(
+                id: UUID(),
+                title: "Time Keeper",
+                description: "Focus for 2 hours total",
+                icon: "⏰",
+                type: .totalFocusTime,
+                progress: 0,
+                target: 120, // 2 hours in minutes
+                unlocked: false,
+                unlockedDate: nil
+            ),
+            Achievement(
+                id: UUID(),
+                title: "Streak Starter",
+                description: "Maintain a 3-day focus streak",
+                icon: "🔥",
+                type: .streak,
+                progress: 0,
+                target: 3,
+                unlocked: false,
+                unlockedDate: nil
+            ),
+            Achievement(
+                id: UUID(),
+                title: "Perfect Week",
+                description: "Focus every day for a week",
+                icon: "🌟",
+                type: .perfectWeek,
+                progress: 0,
+                target: 7,
+                unlocked: false,
+                unlockedDate: nil
+            ),
+            Achievement(
+                id: UUID(),
+                title: "Marathon Focus",
+                description: "Focus for 10 hours total",
+                icon: "🏃‍♂️",
+                type: .totalFocusTime,
+                progress: 0,
+                target: 600, // 10 hours in minutes
+                unlocked: false,
+                unlockedDate: nil
+            ),
+            Achievement(
+                id: UUID(),
+                title: "Consistency Champion",
+                description: "Maintain a 30-day focus streak",
+                icon: "👑",
+                type: .streak,
+                progress: 0,
+                target: 30,
+                unlocked: false,
+                unlockedDate: nil
+            ),
+            Achievement(
+                id: UUID(),
+                title: "Century Club",
+                description: "Complete 100 focus sessions",
+                icon: "💯",
+                type: .sessionsCompleted,
+                progress: 0,
+                target: 100,
+                unlocked: false,
+                unlockedDate: nil
+            )
+        ]
+    }
+    
+    func updateAchievementProgress(type: Achievement.AchievementType, progress: Double) {
+        for index in achievements.indices {
+            if achievements[index].type == type {
+                var achievement = achievements[index]
+                
+                // Handle different progress update strategies
+                switch type {
+                case .sessionsCompleted, .totalFocusTime:
+                    // Accumulate progress for these types
+                    achievement.progress += progress
+                case .streak:
+                    // Set progress to current value (not accumulative)
+                    achievement.progress = progress
+                case .perfectWeek, .perfectMonth, .earlyBird, .nightOwl, .weekendWarrior:
+                    // These will need special handling based on specific logic
+                    achievement.progress = max(achievement.progress, progress)
+                }
+                
+                // Check if achievement should be unlocked
+                if achievement.isCompleted && !achievement.unlocked {
+                    achievement.unlocked = true
+                    achievement.unlockedDate = Date()
+                    print("🎉 Achievement unlocked: \(achievement.title)")
+                    // TODO: Show achievement unlocked notification
+                }
+                
+                if database.updateAchievement(achievement) {
+                    achievements[index] = achievement
+                    print("✅ Updated achievement: \(achievement.title) - Progress: \(achievement.progress)/\(achievement.target)")
+                } else {
+                    print("❌ Failed to update achievement: \(achievement.title)")
+                }
             }
         }
     }
@@ -194,17 +325,19 @@ class StatsManager: ObservableObject {
             // Update session completion
             if database.updateSessionCompletion(sessionId: sessionId, completed: completed) {
                 // Update achievements based on session completion
-                if completed {
-                    // Update focus time achievement
+                if completed && mode == .focus {
+                    // Update focus time achievement (accumulate total time)
                     updateAchievementProgress(type: .totalFocusTime, progress: Double(duration) / 60.0)
                     
-                    // Update sessions completed achievement
+                    // Update sessions completed achievement (increment by 1)
                     updateAchievementProgress(type: .sessionsCompleted, progress: 1.0)
                     
-                    // Update streak achievement
+                    // Update streak achievement (set to current streak)
                     if let streak = calculateCurrentStreak() {
                         updateAchievementProgress(type: .streak, progress: Double(streak))
                     }
+                    
+                    print("📊 Achievement progress updated for completed focus session")
                 }
             }
         }
@@ -288,10 +421,16 @@ class StatsManager: ObservableObject {
         }
         
         fetchStats(for: settingsManager.displayPeriod)
-        print("🧪 Test data added")
+        
+        // Update achievements based on test data
+        updateAchievementProgress(type: .sessionsCompleted, progress: 7.0) // 7 sessions
+        updateAchievementProgress(type: .totalFocusTime, progress: 175.0) // 7 * 25 minutes
+        updateAchievementProgress(type: .streak, progress: 7.0) // 7 day streak
+        
+        print("🧪 Test data added and achievements updated")
     }
     
-    // Add the calculateCurrentStreak function
+    // Calculate current streak for achievement tracking
     private func calculateCurrentStreak() -> Int? {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -328,5 +467,35 @@ class StatsManager: ObservableObject {
         }
         
         return streak
+    }
+    
+    // MARK: - Debug Methods
+    
+    func debugAchievements() {
+        print("🏆 Achievements Debug Info:")
+        print("   Total achievements: \(achievements.count)")
+        for achievement in achievements {
+            let status = achievement.unlocked ? "✅ UNLOCKED" : "🔒 Locked"
+            print("   \(achievement.icon) \(achievement.title): \(achievement.progress)/\(achievement.target) \(status)")
+        }
+    }
+    
+    func debugStats() {
+        print("📊 Stats Debug Info:")
+        print("   Total Sessions: \(summary.totalSessions)")
+        print("   Completed Sessions: \(summary.completedSessions)")
+        print("   Total Focus Time: \(summary.totalFocusTime) minutes")
+        print("   Current Streak: \(summary.currentStreak) days")
+        print("   Completion Rate: \(String(format: "%.1f", summary.completionRate))%")
+    }
+    
+    func forceRefreshAchievements() {
+        print("🔄 Force refreshing achievements...")
+        loadAchievements()
+        if achievements.isEmpty {
+            print("⚠️ Still no achievements found, reinitializing...")
+            initializeDefaultAchievements()
+        }
+        print("✅ Achievements refresh complete: \(achievements.count) achievements loaded")
     }
 }

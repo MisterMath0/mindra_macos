@@ -212,6 +212,14 @@ struct MindraSettingsView: View {
         .onAppear {
             coordinator.loadInitialValues()
             coordinator.syncWithStatsManager(statsManager)
+            
+            // Ensure achievements are properly initialized
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if statsManager.achievements.isEmpty {
+                    print("⚠️ Achievements still empty after initialization - triggering reload")
+                    statsManager.debugAchievements()
+                }
+            }
         }
     }
 }

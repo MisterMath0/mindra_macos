@@ -433,28 +433,54 @@ struct StatsSettingsView: View {
                     }
                 }
                 
-                if !statsManager.achievements.isEmpty {
-                    SettingsCard(title: "Achievements") {
-                        VStack(spacing: 12) {
+                SettingsCard(title: "Achievements") {
+                    VStack(spacing: 12) {
+                        if statsManager.achievements.isEmpty {
+                            Text("No achievements available yet")
+                                .font(.system(size: 14, weight: .regular, design: .rounded))
+                                .foregroundColor(AppColors.secondaryText)
+                                .padding(.vertical, 8)
+                        } else {
                             ForEach(statsManager.achievements) { achievement in
                                 AchievementRow(achievement: achievement)
                             }
                         }
                     }
                 }
+                
+                // Debug section (only shown in DEBUG builds)
+                #if DEBUG
+                SettingsCard(title: "Debug Tools") {
+                    VStack(spacing: 12) {
+                        Button("Debug Achievements") {
+                            statsManager.debugAchievements()
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        
+                        Button("Debug Stats") {
+                            statsManager.debugStats()
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        
+                        Button("Add Test Data") {
+                            statsManager.addTestData()
+                        }
+                        .buttonStyle(PrimaryButtonStyle())
+                    }
+                }
+                #endif
             }
         }
     }
     
-    private func formatTime(_ seconds: Int) -> String {
-        let hours = seconds / 3600
-        let minutes = (seconds % 3600) / 60
-        let remainingSeconds = seconds % 60
+    private func formatTime(_ minutes: Int) -> String {
+        let hours = minutes / 60
+        let remainingMinutes = minutes % 60
         
         if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, remainingSeconds)
+            return String(format: "%d:%02d h", hours, remainingMinutes)
         } else {
-            return String(format: "%d:%02d", minutes, remainingSeconds)
+            return String(format: "%d min", minutes)
         }
     }
 }
