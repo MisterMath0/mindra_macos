@@ -219,9 +219,10 @@ struct ContentView: View {
             
             // Quote in top-right corner
             if !quotesManager.currentQuote.isEmpty {
-                Text(quotesManager.currentQuote)
-                    .font(.system(size: max(12, geometry.size.width * 0.012), weight: .medium, design: .rounded))
+                Text("\"\(quotesManager.currentQuote)\"")
+                    .font(.system(size: max(14, geometry.size.width * 0.014), weight: .bold, design: .rounded))
                     .foregroundColor(AppColors.secondaryText)
+                    .italic()
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: geometry.size.width * 0.35)
                     .lineLimit(2)

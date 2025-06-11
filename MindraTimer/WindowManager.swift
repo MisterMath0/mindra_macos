@@ -55,7 +55,7 @@ class WindowManager: ObservableObject {
         
         // Set window properties
         window.isMovableByWindowBackground = true
-        window.title = "MindraTimer"
+        window.title = "Mindra"
         
         // Set window appearance and style
         window.appearance = NSAppearance(named: .darkAqua)
