@@ -371,15 +371,28 @@ struct ContentView: View {
             // Session counter with animation
             if timerManager.sessionsCompleted > 0 {
                 VStack(spacing: 4) {
-                    Text("Sessions Completed")
-                        .font(.system(size: max(10, geometry.size.width * 0.012), weight: .medium, design: .rounded))
-                        .foregroundColor(.white.opacity(0.5))
-                        .tracking(0.5)
-                    
-                    Text("\(timerManager.sessionsCompleted)")
-                        .font(.system(size: max(16, geometry.size.width * 0.02), weight: .semibold, design: .rounded))
-                        .foregroundColor(timerManager.currentMode.color)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: timerManager.sessionsCompleted)
+                    HStack(spacing: 16) {
+                        VStack(spacing: 4) {
+                            Text("Focus Sessions")
+                                .font(.system(size: max(10, geometry.size.width * 0.012), weight: .medium, design: .rounded))
+                                .foregroundColor(.white.opacity(0.5))
+                                .tracking(0.5)
+                            Text("\(timerManager.sessionsCompleted)")
+                                .font(.system(size: max(16, geometry.size.width * 0.02), weight: .semibold, design: .rounded))
+                                .foregroundColor(timerManager.currentMode.color)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: timerManager.sessionsCompleted)
+                        }
+                        VStack(spacing: 4) {
+                            Text("Pomodoro Cycles")
+                                .font(.system(size: max(10, geometry.size.width * 0.012), weight: .medium, design: .rounded))
+                                .foregroundColor(.white.opacity(0.5))
+                                .tracking(0.5)
+                            Text("\(timerManager.sessionsCompleted / 4)")
+                                .font(.system(size: max(16, geometry.size.width * 0.02), weight: .semibold, design: .rounded))
+                                .foregroundColor(timerManager.currentMode.color)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: timerManager.sessionsCompleted)
+                        }
+                    }
                 }
                 .transition(.scale.combined(with: .opacity))
             }

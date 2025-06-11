@@ -104,6 +104,7 @@ class DatabaseManager: ObservableObject {
                 duration INTEGER NOT NULL,
                 completed INTEGER NOT NULL,
                 mode TEXT NOT NULL,
+                notes TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
         """
@@ -116,6 +117,22 @@ class DatabaseManager: ObservableObject {
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
         """
+
+        // Achievements table
+        let createAchievementsTable = """
+            CREATE TABLE IF NOT EXISTS achievements (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                icon TEXT NOT NULL,
+                type TEXT NOT NULL,
+                progress REAL NOT NULL,
+                target REAL NOT NULL,
+                unlocked INTEGER NOT NULL,
+                unlocked_date TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+        """
         
         // Execute table creation
         if sqlite3_exec(db, createSessionsTable, nil, nil, nil) != SQLITE_OK {
@@ -125,12 +142,18 @@ class DatabaseManager: ObservableObject {
         if sqlite3_exec(db, createSettingsTable, nil, nil, nil) != SQLITE_OK {
             print("Error creating settings table")
         }
+
+        if sqlite3_exec(db, createAchievementsTable, nil, nil, nil) != SQLITE_OK {
+            print("Error creating achievements table")
+        }
         
         // Create indexes for better performance
         let createIndexes = """
             CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON focus_sessions(started_at);
             CREATE INDEX IF NOT EXISTS idx_sessions_mode ON focus_sessions(mode);
             CREATE INDEX IF NOT EXISTS idx_sessions_completed ON focus_sessions(completed);
+            CREATE INDEX IF NOT EXISTS idx_achievements_type ON achievements(type);
+            CREATE INDEX IF NOT EXISTS idx_achievements_unlocked ON achievements(unlocked);
         """
         
         if sqlite3_exec(db, createIndexes, nil, nil, nil) != SQLITE_OK {
@@ -425,5 +448,121 @@ class DatabaseManager: ObservableObject {
         
         sqlite3_finalize(statement)
         return defaultValue
+    }
+
+    // MARK: - Achievement Management
+    
+    func addAchievement(_ achievement: Achievement) -> Bool {
+        let insertSQL = """
+            INSERT INTO achievements (id, title, description, icon, type, progress, target, unlocked, unlocked_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        
+        var statement: OpaquePointer?
+        
+        if sqlite3_prepare_v2(db, insertSQL, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_text(statement, 1, achievement.id.uuidString, -1, nil)
+            sqlite3_bind_text(statement, 2, achievement.title, -1, nil)
+            sqlite3_bind_text(statement, 3, achievement.description, -1, nil)
+            sqlite3_bind_text(statement, 4, achievement.icon, -1, nil)
+            sqlite3_bind_text(statement, 5, achievement.type.rawValue, -1, nil)
+            sqlite3_bind_double(statement, 6, achievement.progress)
+            sqlite3_bind_double(statement, 7, achievement.target)
+            sqlite3_bind_int(statement, 8, achievement.unlocked ? 1 : 0)
+            
+            if let unlockedDate = achievement.unlockedDate {
+                sqlite3_bind_text(statement, 9, ISO8601DateFormatter().string(from: unlockedDate), -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 9)
+            }
+            
+            if sqlite3_step(statement) == SQLITE_DONE {
+                sqlite3_finalize(statement)
+                return true
+            }
+        }
+        
+        sqlite3_finalize(statement)
+        return false
+    }
+    
+    func updateAchievement(_ achievement: Achievement) -> Bool {
+        let updateSQL = """
+            UPDATE achievements
+            SET title = ?, description = ?, icon = ?, type = ?, progress = ?, target = ?, unlocked = ?, unlocked_date = ?
+            WHERE id = ?
+        """
+        
+        var statement: OpaquePointer?
+        
+        if sqlite3_prepare_v2(db, updateSQL, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_text(statement, 1, achievement.title, -1, nil)
+            sqlite3_bind_text(statement, 2, achievement.description, -1, nil)
+            sqlite3_bind_text(statement, 3, achievement.icon, -1, nil)
+            sqlite3_bind_text(statement, 4, achievement.type.rawValue, -1, nil)
+            sqlite3_bind_double(statement, 5, achievement.progress)
+            sqlite3_bind_double(statement, 6, achievement.target)
+            sqlite3_bind_int(statement, 7, achievement.unlocked ? 1 : 0)
+            
+            if let unlockedDate = achievement.unlockedDate {
+                sqlite3_bind_text(statement, 8, ISO8601DateFormatter().string(from: unlockedDate), -1, nil)
+            } else {
+                sqlite3_bind_null(statement, 8)
+            }
+            
+            sqlite3_bind_text(statement, 9, achievement.id.uuidString, -1, nil)
+            
+            if sqlite3_step(statement) == SQLITE_DONE {
+                sqlite3_finalize(statement)
+                return true
+            }
+        }
+        
+        sqlite3_finalize(statement)
+        return false
+    }
+    
+    func getAchievements() -> [Achievement] {
+        let querySQL = "SELECT id, title, description, icon, type, progress, target, unlocked, unlocked_date FROM achievements"
+        var statement: OpaquePointer?
+        var achievements: [Achievement] = []
+        
+        if sqlite3_prepare_v2(db, querySQL, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                let idString = String(cString: sqlite3_column_text(statement, 0))
+                let title = String(cString: sqlite3_column_text(statement, 1))
+                let description = String(cString: sqlite3_column_text(statement, 2))
+                let icon = String(cString: sqlite3_column_text(statement, 3))
+                let typeString = String(cString: sqlite3_column_text(statement, 4))
+                let progress = sqlite3_column_double(statement, 5)
+                let target = sqlite3_column_double(statement, 6)
+                let unlocked = sqlite3_column_int(statement, 7) == 1
+                
+                var unlockedDate: Date?
+                if let unlockedDatePointer = sqlite3_column_text(statement, 8) {
+                    let unlockedDateString = String(cString: unlockedDatePointer)
+                    unlockedDate = ISO8601DateFormatter().date(from: unlockedDateString)
+                }
+                
+                if let id = UUID(uuidString: idString),
+                   let type = Achievement.AchievementType(rawValue: typeString) {
+                    let achievement = Achievement(
+                        id: id,
+                        title: title,
+                        description: description,
+                        icon: icon,
+                        type: type,
+                        progress: progress,
+                        target: target,
+                        unlocked: unlocked,
+                        unlockedDate: unlockedDate
+                    )
+                    achievements.append(achievement)
+                }
+            }
+        }
+        
+        sqlite3_finalize(statement)
+        return achievements
     }
 }

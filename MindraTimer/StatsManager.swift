@@ -27,6 +27,7 @@ class StatsManager: ObservableObject {
     
     // Use the existing SettingsManager instead of our own AppSettings
     @Published var settingsManager: SettingsManager
+    @Published private(set) var achievements: [Achievement] = []
     
     private let database: DatabaseManager
     private var currentSessionId: String?
@@ -36,6 +37,7 @@ class StatsManager: ObservableObject {
         self.database = DatabaseManager()
         self.settingsManager = SettingsManager()
         fetchStats(for: settingsManager.displayPeriod)
+        loadAchievements()
     }
     
     // MARK: - Computed Properties for easy access
@@ -114,6 +116,42 @@ class StatsManager: ObservableObject {
         fetchStats(for: period)
     }
     
+    // MARK: - Achievement Management
+    
+    private func loadAchievements() {
+        achievements = database.getAchievements()
+    }
+    
+    func updateAchievementProgress(type: Achievement.AchievementType, progress: Double) {
+        if let index = achievements.firstIndex(where: { $0.type == type }) {
+            var achievement = achievements[index]
+            achievement.progress = progress
+            
+            if achievement.isCompleted && !achievement.unlocked {
+                achievement.unlocked = true
+                achievement.unlockedDate = Date()
+                // TODO: Show achievement unlocked notification
+            }
+            
+            if database.updateAchievement(achievement) {
+                achievements[index] = achievement
+            }
+        }
+    }
+    
+    func unlockAchievement(id: UUID) {
+        if let index = achievements.firstIndex(where: { $0.id == id }) {
+            var achievement = achievements[index]
+            achievement.unlocked = true
+            achievement.unlockedDate = Date()
+            
+            if database.updateAchievement(achievement) {
+                achievements[index] = achievement
+                // TODO: Show achievement unlocked notification
+            }
+        }
+    }
+    
     // MARK: - Session Management
     
     func startSession(mode: TimerMode, duration: Int) -> String {
@@ -152,6 +190,23 @@ class StatsManager: ObservableObject {
             
             // Refresh stats
             fetchStats(for: settingsManager.displayPeriod)
+            
+            // Update session completion
+            if database.updateSessionCompletion(sessionId: sessionId, completed: completed) {
+                // Update achievements based on session completion
+                if completed {
+                    // Update focus time achievement
+                    updateAchievementProgress(type: .totalFocusTime, progress: Double(duration) / 60.0)
+                    
+                    // Update sessions completed achievement
+                    updateAchievementProgress(type: .sessionsCompleted, progress: 1.0)
+                    
+                    // Update streak achievement
+                    if let streak = calculateCurrentStreak() {
+                        updateAchievementProgress(type: .streak, progress: Double(streak))
+                    }
+                }
+            }
         }
     }
     
@@ -234,5 +289,44 @@ class StatsManager: ObservableObject {
         
         fetchStats(for: settingsManager.displayPeriod)
         print("🧪 Test data added")
+    }
+    
+    // Add the calculateCurrentStreak function
+    private func calculateCurrentStreak() -> Int? {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        
+        // Get all completed sessions
+        let completedSessions = sessions.filter { $0.completed && $0.mode == .focus }
+        
+        // Sort sessions by date
+        let sortedSessions = completedSessions.sorted { $0.startedAt > $1.startedAt }
+        
+        // If no sessions, return 0
+        guard !sortedSessions.isEmpty else { return 0 }
+        
+        // Check if the most recent session was today
+        let mostRecentSession = sortedSessions[0]
+        if !calendar.isDate(mostRecentSession.startedAt, inSameDayAs: today) {
+            return 0
+        }
+        
+        // Calculate streak
+        var streak = 1
+        var currentDate = today
+        
+        for session in sortedSessions.dropFirst() {
+            let sessionDate = calendar.startOfDay(for: session.startedAt)
+            let daysBetween = calendar.dateComponents([.day], from: sessionDate, to: currentDate).day ?? 0
+            
+            if daysBetween == 1 {
+                streak += 1
+                currentDate = sessionDate
+            } else {
+                break
+            }
+        }
+        
+        return streak
     }
 }

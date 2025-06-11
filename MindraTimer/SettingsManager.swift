@@ -174,6 +174,15 @@ class SettingsManager: ObservableObject {
         didSet { UserDefaults.standard.set(visualizationType.rawValue, forKey: "visualizationType") }
     }
     
+    // MARK: - Menu Bar Settings
+    @Published var showTimerInMenuBar: Bool {
+        didSet { UserDefaults.standard.set(showTimerInMenuBar, forKey: "showTimerInMenuBar") }
+    }
+    
+    @Published var showNotificationsInMenuBar: Bool {
+        didSet { UserDefaults.standard.set(showNotificationsInMenuBar, forKey: "showNotificationsInMenuBar") }
+    }
+    
     // MARK: - Initialization
     
     init() {
@@ -181,6 +190,10 @@ class SettingsManager: ObservableObject {
         self.disableAnimations = UserDefaults.standard.bool(forKey: "disableAnimations")
         self.clearMode = UserDefaults.standard.bool(forKey: "clearMode")
         self.showShareButton = UserDefaults.standard.object(forKey: "showShareButton") as? Bool ?? true
+        
+        // Load menu bar settings
+        self.showTimerInMenuBar = UserDefaults.standard.object(forKey: "showTimerInMenuBar") as? Bool ?? true
+        self.showNotificationsInMenuBar = UserDefaults.standard.object(forKey: "showNotificationsInMenuBar") as? Bool ?? true
         
         // Load clock settings
         self.use24HourFormat = UserDefaults.standard.bool(forKey: "use24HourFormat")
@@ -299,7 +312,9 @@ class SettingsManager: ObservableObject {
             "showCompletionRate": showCompletionRate,
             "showAverageSessionLength": showAverageSessionLength,
             "enableNotificationsForAchievements": enableNotificationsForAchievements,
-            "visualizationType": visualizationType.rawValue
+            "visualizationType": visualizationType.rawValue,
+            "showTimerInMenuBar": showTimerInMenuBar,
+            "showNotificationsInMenuBar": showNotificationsInMenuBar
         ]
     }
     
@@ -341,5 +356,8 @@ class SettingsManager: ObservableObject {
         if let visualizationString = data["visualizationType"] as? String {
             visualizationType = VisualizationType(rawValue: visualizationString) ?? .bar
         }
+        
+        if let timerInMenuBar = data["showTimerInMenuBar"] as? Bool { showTimerInMenuBar = timerInMenuBar }
+        if let notificationsInMenuBar = data["showNotificationsInMenuBar"] as? Bool { showNotificationsInMenuBar = notificationsInMenuBar }
     }
 }
