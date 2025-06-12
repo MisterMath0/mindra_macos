@@ -2,64 +2,10 @@
 //  SettingsManager.swift
 //  MindraTimer
 //
-//  Created by Guy Mathieu Foko on 09.06.25.
+//  Refactored settings manager without duplicate declarations
 //
 
 import Foundation
-
-// MARK: - Settings Models
-
-enum QuoteCategory: String, CaseIterable {
-    case motivation = "motivation"
-    case focus = "focus"
-    case productivity = "productivity"
-    case wellness = "wellness"
-    case success = "success"
-    
-    var displayName: String {
-        switch self {
-        case .motivation: return "Motivation"
-        case .focus: return "Focus"
-        case .productivity: return "Productivity"
-        case .wellness: return "Wellness"
-        case .success: return "Success"
-        }
-    }
-}
-
-enum SoundOption: String, CaseIterable {
-    case sparkle = "sparkle"
-    case chime = "chime"
-    case bellSoft = "bellSoft"
-    case bellLoud = "bellLoud"
-    case trainArrival = "trainArrival"
-    case commuterJingle = "commuterJingle"
-    
-    var displayName: String {
-        switch self {
-        case .sparkle: return "Sparkle"
-        case .chime: return "Chime"
-        case .bellSoft: return "Bell (Soft)"
-        case .bellLoud: return "Bell (Loud)"
-        case .trainArrival: return "Train Arrival"
-        case .commuterJingle: return "Commuter Jingle"
-        }
-    }
-}
-
-enum VisualizationType: String, CaseIterable {
-    case bar = "bar"
-    case line = "line"
-    case area = "area"
-    
-    var displayName: String {
-        switch self {
-        case .bar: return "Bar Chart"
-        case .line: return "Line Chart"
-        case .area: return "Area Chart"
-        }
-    }
-}
 
 // MARK: - Settings Manager
 

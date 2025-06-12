@@ -7,31 +7,7 @@
 
 import SwiftUI
 
-// MARK: - App Colors (Consistent Color Scheme)
-
-struct AppColors {
-    // Primary colors matching main app
-    static let primaryBackground = Color(red: 0.05, green: 0.05, blue: 0.05)
-    static let sidebarBackground = Color(red: 0.04, green: 0.04, blue: 0.04)
-    static let cardBackground = Color(red: 0.08, green: 0.08, blue: 0.08)
-    static let selectedBackground = Color.white.opacity(0.1)
-    
-    // Text colors
-    static let primaryText = Color.white
-    static let secondaryText = Color.white.opacity(0.7)
-    static let tertiaryText = Color.white.opacity(0.5)
-    
-    // Accent colors matching timer modes
-    static let focusColor = Color(red: 0.6, green: 0.4, blue: 0.9) // Purple like main app
-    static let shortBreakColor = Color(red: 0.9, green: 0.5, blue: 0.7) // Pink
-    static let longBreakColor = Color(red: 0.3, green: 0.6, blue: 0.9) // Blue
-    
-    // UI colors
-    static let dividerColor = Color.white.opacity(0.1)
-    static let errorColor = Color.red
-    static let successColor = Color.green
-    static let warningColor = Color.orange
-}
+// ContentView now imports AppColors from UI/Styles/AppColors.swift
 
 struct ContentView: View {
     @EnvironmentObject var windowManager: WindowManager

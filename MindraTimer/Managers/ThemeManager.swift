@@ -1,17 +1,5 @@
 import SwiftUI
 
-enum AppTheme: String, CaseIterable {
-    case dark = "dark"
-    case light = "light"
-    
-    var displayName: String {
-        switch self {
-        case .dark: return "Dark"
-        case .light: return "Light"
-        }
-    }
-}
-
 class ThemeManager: ObservableObject {
     @Published var currentTheme: AppTheme {
         didSet {
@@ -33,6 +21,7 @@ class ThemeManager: ObservableObject {
         switch currentTheme {
         case .dark: return Color.black
         case .light: return Color.white
+        case .auto: return Color.black // Default to dark for auto
         }
     }
     
@@ -40,6 +29,7 @@ class ThemeManager: ObservableObject {
         switch currentTheme {
         case .dark: return Color.white
         case .light: return Color.black
+        case .auto: return Color.white // Default to dark for auto
         }
     }
     
@@ -47,6 +37,7 @@ class ThemeManager: ObservableObject {
         switch currentTheme {
         case .dark: return Color.white.opacity(0.7)
         case .light: return Color.black.opacity(0.7)
+        case .auto: return Color.white.opacity(0.7) // Default to dark for auto
         }
     }
     
@@ -54,6 +45,7 @@ class ThemeManager: ObservableObject {
         switch currentTheme {
         case .dark: return Color.purple
         case .light: return Color.blue
+        case .auto: return Color.purple // Default to dark for auto
         }
     }
     
@@ -61,6 +53,7 @@ class ThemeManager: ObservableObject {
         switch currentTheme {
         case .dark: return Color.white.opacity(0.1)
         case .light: return Color.black.opacity(0.1)
+        case .auto: return Color.white.opacity(0.1) // Default to dark for auto
         }
     }
     
@@ -68,6 +61,7 @@ class ThemeManager: ObservableObject {
         switch currentTheme {
         case .dark: return Color.white.opacity(0.2)
         case .light: return Color.black.opacity(0.2)
+        case .auto: return Color.white.opacity(0.2) // Default to dark for auto
         }
     }
 } 

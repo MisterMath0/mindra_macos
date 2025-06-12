@@ -245,10 +245,10 @@ class StatsManager: ObservableObject {
                 
                 // Handle different progress update strategies
                 switch type {
-                case .sessionsCompleted, .totalFocusTime:
+                case .sessionsCompleted, .totalFocusTime, .marathon:
                     // Accumulate progress for these types
                     achievement.progress += progress
-                case .streak:
+                case .streak, .consistency:
                     // Set progress to current value (not accumulative)
                     achievement.progress = progress
                 case .perfectWeek, .perfectMonth, .earlyBird, .nightOwl, .weekendWarrior:

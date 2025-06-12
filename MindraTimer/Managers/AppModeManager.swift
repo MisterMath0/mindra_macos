@@ -8,24 +8,7 @@
 import SwiftUI
 import Foundation
 
-enum AppMode: String, CaseIterable {
-    case clock = "clock"
-    case pomodoro = "pomodoro"
-    
-    var displayName: String {
-        switch self {
-        case .clock: return "Clock"
-        case .pomodoro: return "Pomodoro"
-        }
-    }
-    
-    var iconName: String {
-        switch self {
-        case .clock: return "clock"
-        case .pomodoro: return "timer"
-        }
-    }
-}
+// AppMode is now defined in TimerModels.swift
 
 class AppModeManager: ObservableObject {
     @Published var currentMode: AppMode {

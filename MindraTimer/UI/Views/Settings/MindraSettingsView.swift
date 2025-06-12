@@ -134,45 +134,8 @@ struct ModernTextFieldStyle: TextFieldStyle {
     }
 }
 
-struct PrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 14, weight: .semibold, design: .rounded))
-            .foregroundColor(.white)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 12)
-            .frame(minWidth: 80, minHeight: 44) // Ensure minimum touch target
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(AppColors.focusColor)
-                    .opacity(configuration.isPressed ? 0.8 : 1.0)
-                    .shadow(color: AppColors.focusColor.opacity(0.3), radius: configuration.isPressed ? 2 : 4, x: 0, y: configuration.isPressed ? 1 : 2)
-            )
-            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
-    }
-}
-
-struct SecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 14, weight: .medium, design: .rounded))
-            .foregroundColor(AppColors.secondaryText)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .frame(minWidth: 80, minHeight: 44) // Ensure minimum touch target
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(AppColors.cardBackground)
-                    .stroke(AppColors.dividerColor, lineWidth: 1)
-                    .opacity(configuration.isPressed ? 0.8 : 1.0)
-            )
-            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
-    }
-}
-
 // MARK: - Main Settings Container
+// Note: Button styles are now imported from UI/Styles/ButtonStyles.swift
 
 struct MindraSettingsView: View {
     @EnvironmentObject var statsManager: StatsManager

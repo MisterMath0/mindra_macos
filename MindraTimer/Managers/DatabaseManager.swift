@@ -8,58 +8,8 @@
 import Foundation
 import SQLite3
 
-// MARK: - Data Models (matching your Next.js structure)
-
-struct FocusSession {
-    let id: String
-    let startedAt: Date
-    let endedAt: Date?
-    let duration: Int // in seconds
-    let completed: Bool
-    let mode: TimerMode
-    
-    init(id: String = UUID().uuidString, startedAt: Date, endedAt: Date? = nil, duration: Int, completed: Bool, mode: TimerMode) {
-        self.id = id
-        self.startedAt = startedAt
-        self.endedAt = endedAt
-        self.duration = duration
-        self.completed = completed
-        self.mode = mode
-    }
-}
-
-struct StatsSummary {
-    let totalSessions: Int
-    let totalFocusTime: Int // in minutes
-    let completedSessions: Int
-    let completionRate: Double // percentage
-    let averageSessionLength: Int // in minutes
-    let currentStreak: Int
-    let bestStreak: Int
-    let totalTasksCompleted: Int
-}
-
-struct ChartData {
-    let day: String
-    let focusMinutes: Int
-    let sessions: Int
-}
-
-enum StatsPeriod: String, CaseIterable {
-    case day = "day"
-    case week = "week"
-    case month = "month"
-    case all = "all"
-    
-    var displayName: String {
-        switch self {
-        case .day: return "Today"
-        case .week: return "This Week"
-        case .month: return "This Month"
-        case .all: return "All Time"
-        }
-    }
-}
+// MARK: - Uses Models from Models.swift
+// All data models are defined in Models.swift to avoid duplication
 
 // MARK: - Database Manager
 
@@ -356,29 +306,7 @@ class DatabaseManager: ObservableObject {
     // MARK: - Helper Methods
     
     private func getDateRange(for period: StatsPeriod) -> (start: Date, end: Date) {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        switch period {
-        case .day:
-            let startOfDay = calendar.startOfDay(for: now)
-            return (start: startOfDay, end: now)
-            
-        case .week:
-            let startOfWeek = calendar.date(byAdding: .day, value: -7, to: now) ?? now
-            return (start: startOfWeek, end: now)
-            
-        case .month:
-            let startOfMonth = calendar.date(byAdding: .month, value: -1, to: now) ?? now
-            return (start: startOfMonth, end: now)
-            
-        case .all:
-            // Start from a reasonable date in the past
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            let startDate = formatter.date(from: "2025-01-01") ?? now
-            return (start: startDate, end: now)
-        }
+        return period.dateRange
     }
     
     private func calculateStreaks(from sessions: [FocusSession]) -> (current: Int, best: Int) {
