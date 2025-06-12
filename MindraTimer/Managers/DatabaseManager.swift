@@ -257,30 +257,35 @@ class DatabaseManager: ObservableObject {
         print("🚑 EMERGENCY DATABASE FIX STARTING...")
         print(String(repeating: "🔄", count: 20))
         
-        // Step 1: Diagnose current state
-        print("\n1. DIAGNOSING CURRENT ISSUES:")
+        // Step 1: Purge UserDefaults
+        print("\n1. PURGING USERDEFAULTS SESSION DATA:")
+        purgeAllUserDefaultsSessionData()
+        
+        // Step 2: Diagnose current state
+        print("\n2. DIAGNOSING CURRENT ISSUES:")
         diagnoseDatabaseIssues()
         
-        // Step 2: Nuclear reset
-        print("\n2. PERFORMING NUCLEAR RESET:")
+        // Step 3: Nuclear reset
+        print("\n3. PERFORMING NUCLEAR RESET:")
         resetDatabaseForDevelopment()
         
-        // Step 3: Test basic functionality
-        print("\n3. TESTING BASIC FUNCTIONALITY:")
+        // Step 4: Test basic functionality
+        print("\n4. TESTING BASIC FUNCTIONALITY:")
         diagnoseDatabaseIssues()
         
-        // Step 4: Initialize default data
-        print("\n4. INITIALIZING DEFAULT DATA:")
+        // Step 5: Initialize default data
+        print("\n5. INITIALIZING DEFAULT DATA:")
         initializeDefaultData()
         
-        // Step 5: Final verification
-        print("\n5. FINAL VERIFICATION:")
+        // Step 6: Final verification
+        print("\n6. FINAL VERIFICATION:")
         let isWorking = verifyDatabaseIntegrity()
         
         print(String(repeating: "🔄", count: 20))
         if isWorking {
             print("✅ DATABASE EMERGENCY FIX SUCCESSFUL!")
             print("🎉 Your database should now work properly")
+            print("📊 All stats should come from database, not UserDefaults")
         } else {
             print("❌ DATABASE STILL HAS ISSUES")
             print("📞 Time to consider SwiftData or SQLite.swift migration")
@@ -328,7 +333,25 @@ class DatabaseManager: ObservableObject {
             print("📁 Database file size: \(size) bytes")
         }
         
-        // 2. Test basic SQLite operations
+        // 2. Debug UserDefaults (this might be where the real data is!)
+        print("🔍 CHECKING USERDEFAULTS:")
+        let userDefaults = UserDefaults.standard
+        
+        // Common keys that might store session data
+        let possibleKeys = [
+            "focusSessions", "sessionsCompleted", "totalSessions",
+            "pomodorosCycles", "pomodoroCycles", "cyclesCompleted",
+            "totalFocusTime", "completedSessions", "streakCount"
+        ]
+        
+        for key in possibleKeys {
+            let value = userDefaults.object(forKey: key)
+            if value != nil {
+                print("✅ UserDefaults[\(key)] = \(value!)")
+            }
+        }
+        
+        // 3. Test basic SQLite operations
         var statement: OpaquePointer?
         
         // Test table creation
@@ -372,7 +395,7 @@ class DatabaseManager: ObservableObject {
             print("❌ Basic select prepare: FAILED - \(error)")
         }
         
-        // 3. Check our actual tables
+        // 4. Check our actual tables
         let tables = ["focus_sessions", "achievements", "settings"]
         for table in tables {
             let checkSQL = "SELECT COUNT(*) FROM \(table);"
@@ -391,7 +414,7 @@ class DatabaseManager: ObservableObject {
             }
         }
         
-        // 4. Check table schemas
+        // 5. Check table schemas
         for table in tables {
             print("📁 Schema for \(table):")
             let schemaSQL = "PRAGMA table_info(\(table));"
@@ -405,11 +428,16 @@ class DatabaseManager: ObservableObject {
             }
         }
         
+        // 6. Check what StatsManager is actually using
+        print("🔍 CHECKING STATSMANAGER STATE:")
+        // This will help us see if StatsManager has its own data source
+        
         // Clean up test table
         sqlite3_exec(db, "DROP TABLE IF EXISTS test_table;", nil, nil, nil)
         
         print(String(repeating: "=", count: 50))
         print("🔍 DIAGNOSIS COMPLETE")
+        print("💡 THEORY: UI is showing UserDefaults data, not database data!")
     }
     
     func clearAllData() {
@@ -480,6 +508,35 @@ class DatabaseManager: ObservableObject {
         createTables()
         
         print("✅ Database completely reset - pristine state")
+    }
+    
+    func purgeAllUserDefaultsSessionData() {
+        print("🧽 PURGING ALL USERDEFAULTS SESSION DATA...")
+        
+        let userDefaults = UserDefaults.standard
+        
+        // List of ALL possible session-related keys to remove
+        let sessionKeys = [
+            "focusSessions", "sessionsCompleted", "totalSessions",
+            "pomodorosCycles", "pomodoroCycles", "cyclesCompleted",
+            "totalFocusTime", "completedSessions", "streakCount",
+            "currentStreak", "bestStreak", "totalTasksCompleted",
+            "completionRate", "averageSessionLength", "stats_migrated_v1",
+            "lastSessionDate", "dailyGoal", "weeklyGoal", "monthlyGoal"
+        ]
+        
+        for key in sessionKeys {
+            let oldValue = userDefaults.object(forKey: key)
+            if oldValue != nil {
+                print("🗑️ Removing UserDefaults[\(key)] = \(oldValue!)")
+                userDefaults.removeObject(forKey: key)
+            }
+        }
+        
+        // Force synchronize to disk
+        userDefaults.synchronize()
+        
+        print("✅ All UserDefaults session data purged")
     }
     
     func initializeDefaultData() {

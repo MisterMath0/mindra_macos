@@ -55,45 +55,58 @@ class DatabaseDebugger {
     }
     
     private func tableExists(_ tableName: String) -> Bool {
-        let query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
-        
-        do {
-            // Use direct SQLite query since BaseRepository might have issues
-            guard let db = connection.getDatabasePointer() else {
-                print("No database pointer available for table check")
-                return false
-            }
-            
-            var statement: OpaquePointer?
-            if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
-                sqlite3_bind_text(statement, 1, tableName, -1, nil)
-                let result = sqlite3_step(statement) == SQLITE_ROW
-                sqlite3_finalize(statement)
-                return result
-            } else {
-                let errorMessage = String(cString: sqlite3_errmsg(db))
-                print("Error preparing table existence query: \(errorMessage)")
-                return false
-            }
+        guard let db = connection.getDatabasePointer() else {
+            print("No database pointer available for table check")
+            return false
         }
+        
+        var statement: OpaquePointer?
+        let query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?;"
+        
+        var exists = false
+        if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_text(statement, 1, tableName, -1, nil)
+            if sqlite3_step(statement) == SQLITE_ROW {
+                exists = true
+            }
+        } else {
+            let errorMessage = String(cString: sqlite3_errmsg(db))
+            print("Error checking table existence for \(tableName): \(errorMessage)")
+        }
+        
+        sqlite3_finalize(statement)
+        return exists
     }
     
     private func getTableSchema(_ tableName: String) -> String {
-        let query = "PRAGMA table_info(\(tableName))"
+        guard let db = connection.getDatabasePointer() else {
+            return "   Error: No database connection\n"
+        }
         
-        do {
-            let results = try executeQuery(query)
-            var schema = ""
-            for row in results {
-                if let name = row["name"] as? String,
-                   let type = row["type"] as? String {
-                    schema += "   • \(name) (\(type))\n"
+        let query = "PRAGMA table_info(\(tableName));"
+        var statement: OpaquePointer?
+        var schema = ""
+        
+        if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                if let namePtr = sqlite3_column_text(statement, 1),
+                   let typePtr = sqlite3_column_text(statement, 2) {
+                    let name = String(cString: namePtr)
+                    let type = String(cString: typePtr)
+                    let notNull = sqlite3_column_int(statement, 3) == 1 ? " NOT NULL" : ""
+                    let pk = sqlite3_column_int(statement, 5) > 0 ? " PRIMARY KEY" : ""
+                    schema += "   • \(name) (\(type)\(notNull)\(pk))\n"
+                } else {
+                    schema += "   • [Error reading column info]\n"
                 }
             }
-            return schema
-        } catch {
-            return "   Error getting schema: \(error)\n"
+        } else {
+            let errorMessage = String(cString: sqlite3_errmsg(db))
+            schema = "   Error getting schema: \(errorMessage)\n"
         }
+        
+        sqlite3_finalize(statement)
+        return schema.isEmpty ? "   No columns found\n" : schema
     }
     
     private func getDataCounts() -> String {

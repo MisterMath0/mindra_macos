@@ -540,11 +540,8 @@ struct ContentView: View {
     // MARK: - Helper Functions
     
     private func toggleTimer() {
-        if timerManager.isActive && !timerManager.isPaused {
-            timerManager.pauseTimer()
-        } else {
-            timerManager.startTimer()
-        }
+        // FIXED: Use the new centralized toggle method
+        timerManager.toggleTimer()
     }
     
     private func getCurrentTime() -> String {

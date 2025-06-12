@@ -9,8 +9,12 @@ import SwiftUI
 import Foundation
 
 class TimerManager: ObservableObject {
-    // MARK: - Published State
-    @Published var timerState: TimerState
+    // MARK: - Published State - FIXED: Direct properties instead of TimerState wrapper
+    @Published var timeRemaining: Int = 0
+    @Published var isActive: Bool = false
+    @Published var isPaused: Bool = false
+    @Published var currentMode: TimerMode = .focus
+    @Published var totalDuration: Int = 0
     @Published var sessionConfiguration: SessionConfiguration
     @Published var sessionsCompleted: Int = 0
     
@@ -28,14 +32,11 @@ class TimerManager: ObservableObject {
     
     init() {
         self.sessionConfiguration = SessionConfiguration.default
-        self.timerState = TimerState(
-            timeRemaining: Int(SessionConfiguration.default.focusDuration),
-            isActive: false,
-            isPaused: false,
-            currentMode: .focus,
-            sessionsCompleted: 0,
-            totalDuration: Int(SessionConfiguration.default.focusDuration)
-        )
+        self.timeRemaining = Int(SessionConfiguration.default.focusDuration)
+        self.totalDuration = Int(SessionConfiguration.default.focusDuration)
+        self.isActive = false
+        self.isPaused = false
+        self.currentMode = .focus
         
         loadPersistedState()
     }
@@ -58,16 +59,14 @@ class TimerManager: ObservableObject {
     // MARK: - Public Timer Actions
     
     func startTimer() {
-        guard !timerState.isActive else { return }
+        print("🟢 StartTimer called - isActive: \(isActive), isPaused: \(isPaused)")
+        guard !isActive else { 
+            print("⚠️ Timer already active, ignoring start request")
+            return 
+        }
         
-        timerState = TimerState(
-            timeRemaining: timerState.timeRemaining,
-            isActive: true,
-            isPaused: false,
-            currentMode: timerState.currentMode,
-            sessionsCompleted: timerState.sessionsCompleted,
-            totalDuration: timerState.totalDuration
-        )
+        isActive = true
+        isPaused = false
         
         // Start session tracking
         startSessionTracking()
@@ -76,70 +75,145 @@ class TimerManager: ObservableObject {
         startInternalTimer()
         
         // Track analytics
-        analyticsService?.trackSessionStart(mode: timerState.currentMode)
+        analyticsService?.trackSessionStart(mode: currentMode)
         
-        print("⏰ Timer started: \(timerState.currentMode.displayName)")
+        print("✅ Timer started: \(currentMode.displayName)")
     }
     
     func pauseTimer() {
-        guard timerState.isActive && !timerState.isPaused else { return }
+        print("🟡 PauseTimer called - isActive: \(isActive), isPaused: \(isPaused)")
+        guard isActive && !isPaused else { 
+            print("⚠️ Timer not in pausable state")
+            return 
+        }
         
-        timerState = TimerState(
-            timeRemaining: timerState.timeRemaining,
-            isActive: false,
-            isPaused: true,
-            currentMode: timerState.currentMode,
-            sessionsCompleted: timerState.sessionsCompleted,
-            totalDuration: timerState.totalDuration
-        )
+        isActive = false
+        isPaused = true
         
         stopInternalTimer()
         statsManager?.pauseSession()
         
-        print("⏸️ Timer paused")
+        print("✅ Timer paused")
     }
     
     func resumeTimer() {
-        guard timerState.isPaused else { return }
-        startTimer()
+        print("🔵 ResumeTimer called - isActive: \(isActive), isPaused: \(isPaused)")
+        guard isPaused else { 
+            print("⚠️ Timer not paused, cannot resume")
+            return 
+        }
+        
+        // FIXED: Don't call startTimer(), directly resume
+        isActive = true
+        isPaused = false
+        
+        // Resume session tracking if needed
+        if currentSessionId == nil {
+            startSessionTracking()
+        }
+        
+        // Start timer without creating new session
+        startInternalTimer()
+        
+        print("✅ Timer resumed")
+    }
+    
+    // FIXED: NEW METHOD - Central toggle logic
+    func toggleTimer() {
+        print("🔄 ToggleTimer called - isActive: \(isActive), isPaused: \(isPaused)")
+        
+        if isActive && !isPaused {
+            pauseTimer()
+        } else if isPaused {
+            resumeTimer()
+        } else {
+            startTimer()
+        }
     }
     
     func resetTimer() {
         stopInternalTimer()
         endCurrentSession(completed: false)
         
-        let newDuration = Int(sessionConfiguration.duration(for: timerState.currentMode))
-        timerState = TimerState(
-            timeRemaining: newDuration,
-            isActive: false,
-            isPaused: false,
-            currentMode: timerState.currentMode,
-            sessionsCompleted: timerState.sessionsCompleted,
-            totalDuration: newDuration
-        )
+        let newDuration = Int(sessionConfiguration.duration(for: currentMode))
+        timeRemaining = newDuration
+        isActive = false
+        isPaused = false
+        totalDuration = newDuration
         
         print("🔄 Timer reset")
     }
     
     func skipTimer() {
+        print("⏭️ SkipTimer called - Current state: active=\(isActive), paused=\(isPaused), mode=\(currentMode.displayName)")
+        
+        // Store the current timer state before skipping
+        let wasActive = isActive
+        let wasPaused = isPaused
+        
+        // End current session
         endCurrentSession(completed: false)
-        completeCurrentCycle()
+        
+        // Determine next mode
+        let wasInFocus = currentMode == .focus
+        
+        // Update sessions completed for focus sessions
+        if wasInFocus {
+            sessionsCompleted += 1
+            savePersistedState()
+        }
+        
+        // Get next mode
+        let nextMode = determineNextMode()
+        
+        // Update to next mode with new duration
+        let newDuration = Int(sessionConfiguration.duration(for: nextMode))
+        timeRemaining = newDuration
+        currentMode = nextMode
+        totalDuration = newDuration
+        
+        // CRITICAL FIX: Preserve timer state (running/paused) after skip
+        if wasActive && !wasPaused {
+            // Timer was running - keep it running with new mode
+            isActive = true
+            isPaused = false
+            // Restart the internal timer with new duration
+            startInternalTimer()
+            // Start tracking for new mode
+            startSessionTracking()
+            print("✅ Timer skipped to \(nextMode.displayName) - CONTINUING to run")
+        } else if wasPaused {
+            // Timer was paused - keep it paused with new mode  
+            isActive = false
+            isPaused = true
+            print("✅ Timer skipped to \(nextMode.displayName) - REMAINING paused")
+        } else {
+            // Timer was stopped - keep it stopped with new mode
+            isActive = false
+            isPaused = false
+            print("✅ Timer skipped to \(nextMode.displayName) - REMAINING stopped")
+        }
     }
     
     func setMode(_ mode: TimerMode) {
-        guard !timerState.isActive else { return }
+        print("🔄 SetMode called: \(mode.displayName) - Current state: active=\(isActive), paused=\(isPaused)")
+        
+        // FIXED: Allow mode changes but stop timer if running
+        if isActive {
+            print("⚠️ Timer is active, stopping before mode change")
+            stopInternalTimer()
+            endCurrentSession(completed: false)
+        }
         
         let newDuration = Int(sessionConfiguration.duration(for: mode))
-        timerState = TimerState(
-            timeRemaining: newDuration,
-            isActive: false,
-            isPaused: false,
-            currentMode: mode,
-            sessionsCompleted: timerState.sessionsCompleted,
-            totalDuration: newDuration
-        )
+        timeRemaining = newDuration
+        isActive = false
+        isPaused = false
+        currentMode = mode
+        totalDuration = newDuration
         
         analyticsService?.trackSettingsChanged(setting: "timerMode", value: mode.rawValue)
+        print("✅ Mode changed to: \(mode.displayName)")
     }
     
     // MARK: - Configuration Management
@@ -181,16 +255,10 @@ class TimerManager: ObservableObject {
         sessionConfiguration = newConfig
         
         // Update current timer if we're changing the active mode
-        if mode == timerState.currentMode && !timerState.isActive {
+        if mode == currentMode && !isActive {
             let newDuration = Int(duration)
-            timerState = TimerState(
-                timeRemaining: newDuration,
-                isActive: timerState.isActive,
-                isPaused: timerState.isPaused,
-                currentMode: timerState.currentMode,
-                sessionsCompleted: timerState.sessionsCompleted,
-                totalDuration: newDuration
-            )
+            timeRemaining = newDuration
+            totalDuration = newDuration
         }
         
         saveConfiguration()
@@ -200,6 +268,10 @@ class TimerManager: ObservableObject {
     // MARK: - Private Timer Implementation
     
     private func startInternalTimer() {
+        // CRITICAL FIX: Always stop existing timer before creating new one
+        stopInternalTimer()
+        
+        print("🕑 Creating new timer instance")
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             Task { @MainActor in
                 self.tick()
@@ -208,24 +280,28 @@ class TimerManager: ObservableObject {
     }
     
     private func stopInternalTimer() {
-        timer?.invalidate()
-        timer = nil
+        if timer != nil {
+            print("🛑 Stopping timer instance")
+            timer?.invalidate()
+            timer = nil
+        } else {
+            print("🔍 No timer to stop")
+        }
     }
     
+    @MainActor
     private func tick() {
-        guard timerState.timeRemaining > 0 else {
+        guard timeRemaining > 0 else {
             handleTimerCompletion()
             return
         }
         
-        timerState = TimerState(
-            timeRemaining: timerState.timeRemaining - 1,
-            isActive: timerState.isActive,
-            isPaused: timerState.isPaused,
-            currentMode: timerState.currentMode,
-            sessionsCompleted: timerState.sessionsCompleted,
-            totalDuration: timerState.totalDuration
-        )
+        timeRemaining -= 1
+        
+        // Debug: Log every 10 seconds
+        if timeRemaining % 10 == 0 {
+            print("⏱️ Timer tick: \(formattedTime) remaining")
+        }
     }
     
     private func handleTimerCompletion() {
@@ -247,11 +323,11 @@ class TimerManager: ObservableObject {
             }
         }
         
-        print("✅ Timer completed: \(timerState.currentMode.displayName)")
+        print("✅ Timer completed: \(currentMode.displayName)")
     }
     
     private func completeCurrentCycle() {
-        let wasInFocus = timerState.currentMode == .focus
+        let wasInFocus = currentMode == .focus
         
         // Update sessions completed for focus sessions
         if wasInFocus {
@@ -264,18 +340,15 @@ class TimerManager: ObservableObject {
         
         // Update timer state
         let newDuration = Int(sessionConfiguration.duration(for: nextMode))
-        timerState = TimerState(
-            timeRemaining: newDuration,
-            isActive: false,
-            isPaused: false,
-            currentMode: nextMode,
-            sessionsCompleted: sessionsCompleted,
-            totalDuration: newDuration
-        )
+        timeRemaining = newDuration
+        isActive = false
+        isPaused = false
+        currentMode = nextMode
+        totalDuration = newDuration
     }
     
     private func determineNextMode() -> TimerMode {
-        switch timerState.currentMode {
+        switch currentMode {
         case .focus:
             // After focus, decide between short and long break
             return (sessionsCompleted % sessionConfiguration.sessionsUntilLongBreak == 0) ? .longBreak : .shortBreak
@@ -286,7 +359,7 @@ class TimerManager: ObservableObject {
     }
     
     private func shouldAutoStartNext() -> Bool {
-        switch timerState.currentMode {
+        switch currentMode {
         case .focus:
             return sessionConfiguration.autoStartBreaks
         case .shortBreak, .longBreak:
@@ -298,8 +371,8 @@ class TimerManager: ObservableObject {
     
     private func startSessionTracking() {
         currentSessionId = statsManager?.startSession(
-            mode: timerState.currentMode, 
-            duration: timerState.totalDuration
+            mode: currentMode, 
+            duration: totalDuration
         )
         sessionStartTime = Date()
     }
@@ -310,8 +383,8 @@ class TimerManager: ObservableObject {
         if completed {
             statsManager?.completeSession(
                 sessionId: sessionId,
-                mode: timerState.currentMode,
-                duration: timerState.totalDuration,
+                mode: currentMode,
+                duration: totalDuration,
                 completed: true
             )
         } else {
@@ -365,14 +438,11 @@ class TimerManager: ObservableObject {
         
         // Update timer state with loaded configuration
         let duration = Int(sessionConfiguration.focusDuration)
-        timerState = TimerState(
-            timeRemaining: duration,
-            isActive: false,
-            isPaused: false,
-            currentMode: .focus,
-            sessionsCompleted: sessionsCompleted,
-            totalDuration: duration
-        )
+        timeRemaining = duration
+        isActive = false
+        isPaused = false
+        currentMode = .focus
+        totalDuration = duration
         
         print("📖 Timer state loaded")
     }
@@ -386,30 +456,17 @@ class TimerManager: ObservableObject {
         // This would be implemented when SettingsManager includes timer settings
     }
     
-    // MARK: - Computed Properties (for backward compatibility)
-    
-    var timeRemaining: Int {
-        return timerState.timeRemaining
-    }
-    
-    var isActive: Bool {
-        return timerState.isActive
-    }
-    
-    var isPaused: Bool {
-        return timerState.isPaused
-    }
-    
-    var currentMode: TimerMode {
-        return timerState.currentMode
-    }
+    // MARK: - Computed Properties
     
     var formattedTime: String {
-        return timerState.formattedTime
+        let minutes = timeRemaining / 60
+        let seconds = timeRemaining % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
     
     var progress: Double {
-        return timerState.progress
+        guard totalDuration > 0 else { return 0 }
+        return Double(totalDuration - timeRemaining) / Double(totalDuration)
     }
     
     var focusDuration: Int {
@@ -431,11 +488,11 @@ class TimerManager: ObservableObject {
         ⏰ Timer Manager Debug Info:
         
         State:
-        • Mode: \(timerState.currentMode.displayName)
-        • Time: \(timerState.formattedTime)
-        • Active: \(timerState.isActive)
-        • Paused: \(timerState.isPaused)
-        • Progress: \(String(format: "%.1f", timerState.progress * 100))%
+        • Mode: \(currentMode.displayName)
+        • Time: \(formattedTime)
+        • Active: \(isActive)
+        • Paused: \(isPaused)
+        • Progress: \(String(format: "%.1f", progress * 100))%
         • Sessions: \(sessionsCompleted)
         
         Configuration:

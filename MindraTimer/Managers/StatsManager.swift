@@ -504,11 +504,32 @@ class StatsManager: ObservableObject {
         print("   Current Streak: \(summary.currentStreak) days")
         print("   Completion Rate: \(String(format: "%.1f", summary.completionRate))%")
         
+        // CRITICAL: Check what data source we're actually using
+        print("   In-memory sessions count: \(sessions.count)")
+        print("   Chart data points: \(chartData.count)")
+        
         // Check database integrity
         print("   Database Path: \(database.dbPath)")
         let testSession = FocusSession(startedAt: Date(), duration: 60, completed: true, mode: .focus)
         let canWrite = database.addSession(testSession)
         print("   Database Write Test: \(canWrite ? "✅ OK" : "❌ FAILED")")
+        
+        // SMOKING GUN: Check where the UI numbers come from
+        print("🔍 SMOKING GUN ANALYSIS:")
+        
+        // Check UserDefaults directly
+        let userDefaults = UserDefaults.standard
+        print("   UserDefaults focusSessions: \(userDefaults.integer(forKey: "focusSessions"))")
+        print("   UserDefaults sessionsCompleted: \(userDefaults.integer(forKey: "sessionsCompleted"))")
+        print("   UserDefaults pomodorosCycles: \(userDefaults.integer(forKey: "pomodorosCycles"))")
+        print("   UserDefaults pomodoroCycles: \(userDefaults.integer(forKey: "pomodoroCycles"))")
+        
+        // Check what this class is actually storing
+        print("   This StatsManager summary.totalSessions: \(summary.totalSessions)")
+        print("   This StatsManager sessions.count: \(sessions.count)")
+        
+        // If UI shows different numbers, they're coming from elsewhere!
+        print("💡 IF UI SHOWS 15 FOCUS SESSIONS BUT THIS SHOWS 0, THEN UI IS NOT USING DATABASE!")
     }
     
     func forceRefreshAchievements() {
