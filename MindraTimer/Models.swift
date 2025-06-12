@@ -166,9 +166,8 @@ enum StatsPeriod: String, CaseIterable, Codable {
             let startOfMonth = calendar.date(byAdding: .month, value: -1, to: now) ?? now
             return (start: startOfMonth, end: now)
         case .all:
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            let startDate = formatter.date(from: "2025-01-01") ?? now
+            // For 'all' period, get everything from a reasonable start date to now
+            let startDate = Calendar.current.date(byAdding: .year, value: -5, to: now) ?? now
             return (start: startDate, end: now)
         }
     }

@@ -14,67 +14,60 @@ import SQLite3
 // MARK: - Database Manager
 
 class DatabaseManager: ObservableObject {
-    private var db: OpaquePointer?
-    let dbPath: String  // Made public for debugging
+    static let shared = DatabaseManager()
+    
+    let dbPath: String
+    private let connection: DatabaseConnection
+    private let sessionRepository: SessionRepository
+    private let achievementRepository: AchievementRepository
+    private let settingsRepository: SettingsRepository
+    private let debugger: DatabaseDebugger
     
     init() {
         // Create database in Documents directory
         let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
         dbPath = "\(documentsPath)/mindra_timer.sqlite"
         
-        openDatabase()
+        // Initialize connection and repositories
+        connection = DatabaseConnection(dbPath: dbPath)
+        
+        // CRITICAL: Establish database connection
+        do {
+            try connection.connect()
+            print("✅ Database connected successfully at: \(dbPath)")
+        } catch {
+            print("❌ Failed to connect to database: \(error.localizedDescription)")
+        }
+        
+        sessionRepository = SessionRepository(connection: connection)
+        achievementRepository = AchievementRepository(connection: connection)
+        settingsRepository = SettingsRepository(connection: connection)
+        debugger = DatabaseDebugger(connection: connection)
+        
+        // Create tables if they don't exist
         createTables()
-    }
-    
-    deinit {
-        closeDatabase()
-    }
-    
-    // MARK: - Database Operations
-    
-    private func openDatabase() {
-        if sqlite3_open(dbPath, &db) != SQLITE_OK {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
-            print("❌ Unable to open database at \(dbPath): \(errorMessage)")
-        } else {
-            print("✅ Database opened successfully at: \(dbPath)")
-            // Enable foreign keys and other pragmas for better data integrity
-            sqlite3_exec(db, "PRAGMA foreign_keys = ON;", nil, nil, nil)
-            sqlite3_exec(db, "PRAGMA journal_mode = WAL;", nil, nil, nil)
-        }
-    }
-    
-    private func closeDatabase() {
-        if sqlite3_close(db) != SQLITE_OK {
-            print("Unable to close database")
-        }
+        
+        // Print initial debug info
+        print("📊 Initial Database State:")
+        print(debugger.getDebugInfo())
     }
     
     private func createTables() {
-        // Focus sessions table (matching your Supabase schema)
+        // Create focus_sessions table
         let createSessionsTable = """
             CREATE TABLE IF NOT EXISTS focus_sessions (
                 id TEXT PRIMARY KEY,
-                started_at TEXT NOT NULL,
-                ended_at TEXT,
+                started_at INTEGER NOT NULL,
+                ended_at INTEGER,
                 duration INTEGER NOT NULL,
                 completed INTEGER NOT NULL,
                 mode TEXT NOT NULL,
                 notes TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                created_at INTEGER DEFAULT (strftime('%s', 'now'))
             );
         """
         
-        // Settings table
-        let createSettingsTable = """
-            CREATE TABLE IF NOT EXISTS settings (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-        """
-
-        // Achievements table
+        // Create achievements table
         let createAchievementsTable = """
             CREATE TABLE IF NOT EXISTS achievements (
                 id TEXT PRIMARY KEY,
@@ -85,36 +78,40 @@ class DatabaseManager: ObservableObject {
                 progress REAL NOT NULL,
                 target REAL NOT NULL,
                 unlocked INTEGER NOT NULL,
-                unlocked_date TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                unlocked_date INTEGER,
+                created_at INTEGER DEFAULT (strftime('%s', 'now'))
             );
         """
         
-        // Execute table creation with better error handling
-        var errorMessage: UnsafeMutablePointer<CChar>?
+        // Create settings table
+        let createSettingsTable = """
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value BLOB NOT NULL,
+                updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+            );
+        """
         
-        if sqlite3_exec(db, createSessionsTable, nil, nil, &errorMessage) != SQLITE_OK {
-            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
-            print("❌ Error creating sessions table: \(error)")
-            sqlite3_free(errorMessage)
-        } else {
+        // Execute table creation with detailed error handling
+        do {
+            try connection.execute(createSessionsTable)
             print("✅ Sessions table created successfully")
+        } catch {
+            print("❌ Error creating sessions table: \(error.localizedDescription)")
         }
         
-        if sqlite3_exec(db, createSettingsTable, nil, nil, &errorMessage) != SQLITE_OK {
-            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
-            print("❌ Error creating settings table: \(error)")
-            sqlite3_free(errorMessage)
-        } else {
-            print("✅ Settings table created successfully")
-        }
-
-        if sqlite3_exec(db, createAchievementsTable, nil, nil, &errorMessage) != SQLITE_OK {
-            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
-            print("❌ Error creating achievements table: \(error)")
-            sqlite3_free(errorMessage)
-        } else {
+        do {
+            try connection.execute(createAchievementsTable)
             print("✅ Achievements table created successfully")
+        } catch {
+            print("❌ Error creating achievements table: \(error.localizedDescription)")
+        }
+        
+        do {
+            try connection.execute(createSettingsTable)
+            print("✅ Settings table created successfully")
+        } catch {
+            print("❌ Error creating settings table: \(error.localizedDescription)")
         }
         
         // Create indexes for better performance
@@ -126,486 +123,426 @@ class DatabaseManager: ObservableObject {
             CREATE INDEX IF NOT EXISTS idx_achievements_unlocked ON achievements(unlocked);
         """
         
-        if sqlite3_exec(db, createIndexes, nil, nil, nil) != SQLITE_OK {
-            print("Error creating indexes")
+        do {
+            try connection.execute(createIndexes)
+            print("✅ Database indexes created successfully")
+        } catch {
+            print("❌ Error creating indexes: \(error.localizedDescription)")
         }
     }
     
     // MARK: - Session Management
     
     func addSession(_ session: FocusSession) -> Bool {
-        // Use INSERT OR REPLACE to handle conflicts (UPSERT)
-        let insertSQL = """
-            INSERT OR REPLACE INTO focus_sessions (id, started_at, ended_at, duration, completed, mode)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """
-        
-        var statement: OpaquePointer?
-        
-        if sqlite3_prepare_v2(db, insertSQL, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_text(statement, 1, session.id, -1, nil)
-            sqlite3_bind_text(statement, 2, ISO8601DateFormatter().string(from: session.startedAt), -1, nil)
-            
-            if let endedAt = session.endedAt {
-                sqlite3_bind_text(statement, 3, ISO8601DateFormatter().string(from: endedAt), -1, nil)
-            } else {
-                sqlite3_bind_null(statement, 3)
+        do {
+            try sessionRepository.create(session)
+            print("✅ Session saved: \(session.id) (\(session.mode.rawValue), \(session.duration)s)")
+            return true
+        } catch {
+            print("❌ Failed to save session: \(error.localizedDescription)")
+            // Debug: Show exact SQL error
+            if let dbError = error as? DatabaseError {
+                print("🔍 SQL Debug: \(dbError.localizedDescription)")
+                if let db = connection.getDatabasePointer() {
+                    let sqliteError = String(cString: sqlite3_errmsg(db))
+                    print("🔍 SQLite Error: \(sqliteError)")
+                }
             }
-            
-            sqlite3_bind_int(statement, 4, Int32(session.duration))
-            sqlite3_bind_int(statement, 5, session.completed ? 1 : 0)
-            sqlite3_bind_text(statement, 6, session.mode.rawValue, -1, nil)
-            
-            if sqlite3_step(statement) == SQLITE_DONE {
-                sqlite3_finalize(statement)
-                print("✅ Session saved to database: \(session.id)")
-                return true
-            } else {
-                let errorMessage = String(cString: sqlite3_errmsg(db))
-                print("❌ Failed to save session: \(errorMessage)")
-            }
-        } else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
-            print("❌ Failed to prepare session insert: \(errorMessage)")
+            return false
         }
-        
-        sqlite3_finalize(statement)
-        return false
     }
     
     func updateSessionCompletion(sessionId: String, completed: Bool) -> Bool {
-        let updateSQL = "UPDATE focus_sessions SET completed = ?, ended_at = ? WHERE id = ?"
-        var statement: OpaquePointer?
-        
-        if sqlite3_prepare_v2(db, updateSQL, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_int(statement, 1, completed ? 1 : 0)
-            sqlite3_bind_text(statement, 2, ISO8601DateFormatter().string(from: Date()), -1, nil)
-            sqlite3_bind_text(statement, 3, sessionId, -1, nil)
-            
-            if sqlite3_step(statement) == SQLITE_DONE {
-                sqlite3_finalize(statement)
-                return true
-            }
+        do {
+            try sessionRepository.updateSessionCompletion(id: sessionId, completed: completed)
+            print("✅ Session completion updated: \(sessionId) -> \(completed)")
+            return true
+        } catch {
+            print("❌ Failed to update session completion: \(error.localizedDescription)")
+            return false
         }
-        
-        sqlite3_finalize(statement)
-        return false
     }
-    
-    // MARK: - Data Retrieval
     
     func getSessions(for period: StatsPeriod) -> [FocusSession] {
-        let dateRange = getDateRange(for: period)
-        let dateFormatter = ISO8601DateFormatter()
-        
-        let querySQL = """
-            SELECT id, started_at, ended_at, duration, completed, mode
-            FROM focus_sessions
-            WHERE started_at >= ?
-            ORDER BY started_at DESC
-        """
-        
-        var statement: OpaquePointer?
-        var sessions: [FocusSession] = []
-        
-        if sqlite3_prepare_v2(db, querySQL, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_text(statement, 1, dateFormatter.string(from: dateRange.start), -1, nil)
-            
-            while sqlite3_step(statement) == SQLITE_ROW {
-                let id = String(cString: sqlite3_column_text(statement, 0))
-                let startedAtString = String(cString: sqlite3_column_text(statement, 1))
-                let endedAtPointer = sqlite3_column_text(statement, 2)
-                let duration = Int(sqlite3_column_int(statement, 3))
-                let completed = sqlite3_column_int(statement, 4) == 1
-                let modeString = String(cString: sqlite3_column_text(statement, 5))
-                
-                if let startedAt = dateFormatter.date(from: startedAtString),
-                   let mode = TimerMode(rawValue: modeString) {
-                    
-                    var endedAt: Date?
-                    if let endedAtPointer = endedAtPointer {
-                        let endedAtString = String(cString: endedAtPointer)
-                        endedAt = dateFormatter.date(from: endedAtString)
-                    }
-                    
-                    let session = FocusSession(
-                        id: id,
-                        startedAt: startedAt,
-                        endedAt: endedAt,
-                        duration: duration,
-                        completed: completed,
-                        mode: mode
-                    )
-                    sessions.append(session)
-                }
-            }
+        do {
+            let sessions = try sessionRepository.getSessions(for: period)
+            print("✅ Retrieved \(sessions.count) sessions for period: \(period.rawValue)")
+            return sessions
+        } catch {
+            print("❌ Failed to get sessions: \(error.localizedDescription)")
+            return []
         }
-        
-        sqlite3_finalize(statement)
-        return sessions
     }
     
+    // MARK: - Stats Calculation Methods
+    
     func calculateSummary(for sessions: [FocusSession]) -> StatsSummary {
-        let totalSessions = sessions.count
-        let completedSessions = sessions.filter { $0.completed }.count
-        let totalFocusTime = sessions
-            .filter { $0.mode == .focus }
-            .reduce(0) { $0 + $1.duration } / 60 // convert to minutes
-        
-        let completionRate = totalSessions > 0 ? (Double(completedSessions) / Double(totalSessions)) * 100 : 0.0
-        let averageSessionLength = totalSessions > 0 ? sessions.reduce(0) { $0 + $1.duration } / totalSessions / 60 : 0
-        
-        // Calculate streaks
-        let streaks = calculateStreaks(from: sessions)
-        
-        return StatsSummary(
-            totalSessions: totalSessions,
-            totalFocusTime: totalFocusTime,
-            completedSessions: completedSessions,
-            completionRate: completionRate,
-            averageSessionLength: averageSessionLength,
-            currentStreak: streaks.current,
-            bestStreak: streaks.best,
-            totalTasksCompleted: 0 // TODO: Implement when adding task management
-        )
+        return sessionRepository.calculateSummary(for: sessions)
     }
     
     func generateChartData(for sessions: [FocusSession], period: StatsPeriod) -> [ChartData] {
-        let dateRange = getDateRange(for: period)
-        let calendar = Calendar.current
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "MMM d"
-        
-        var chartData: [ChartData] = []
-        var currentDate = dateRange.start
-        
-        // Create array of all dates in range
-        while currentDate <= dateRange.end {
-            let dayString = dateFormatter.string(from: currentDate)
-            chartData.append(ChartData(day: dayString, focusMinutes: 0, sessions: 0))
-            currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
-        }
-        
-        // Populate with session data
-        for session in sessions {
-            let sessionDay = dateFormatter.string(from: session.startedAt)
-            
-            if let index = chartData.firstIndex(where: { $0.day == sessionDay }) {
-                let focusMinutes = session.mode == .focus ? session.duration / 60 : 0
-                chartData[index] = ChartData(
-                    day: chartData[index].day,
-                    focusMinutes: chartData[index].focusMinutes + focusMinutes,
-                    sessions: chartData[index].sessions + 1
-                )
-            }
-        }
-        
-        return chartData
+        return sessionRepository.generateChartData(for: sessions, period: period)
     }
     
-    // MARK: - Helper Methods
+    // MARK: - Achievement Management
     
-    private func getDateRange(for period: StatsPeriod) -> (start: Date, end: Date) {
-        return period.dateRange
+    func addAchievement(_ achievement: Achievement) -> Bool {
+        do {
+            try achievementRepository.create(achievement)
+            return true
+        } catch {
+            print("❌ Failed to save achievement: \(error.localizedDescription)")
+            return false
+        }
     }
     
-    private func calculateStreaks(from sessions: [FocusSession]) -> (current: Int, best: Int) {
-        // Group sessions by date
-        let calendar = Calendar.current
-        let sessionsByDate = Dictionary(grouping: sessions) { session in
-            calendar.startOfDay(for: session.startedAt)
+    func updateAchievement(_ achievement: Achievement) -> Bool {
+        do {
+            try achievementRepository.update(achievement)
+            return true
+        } catch {
+            print("❌ Failed to update achievement: \(error.localizedDescription)")
+            return false
         }
-        
-        let activeDates = Array(sessionsByDate.keys).sorted()
-        
-        guard !activeDates.isEmpty else {
-            return (current: 0, best: 0)
+    }
+    
+    func getAchievements() -> [Achievement] {
+        do {
+            return try achievementRepository.getAllAchievements()
+        } catch {
+            print("❌ Failed to get achievements: \(error.localizedDescription)")
+            return []
         }
-        
-        var currentStreak = 0
-        var bestStreak = 0
-        var tempStreak = 1
-        
-        // Check if user was active today
-        let today = calendar.startOfDay(for: Date())
-        if activeDates.contains(today) {
-            currentStreak = 1
-            
-            // Count backwards from yesterday
-            var checkDate = calendar.date(byAdding: .day, value: -1, to: today)!
-            
-            while activeDates.contains(checkDate) {
-                currentStreak += 1
-                checkDate = calendar.date(byAdding: .day, value: -1, to: checkDate)!
-            }
-        }
-        
-        // Calculate best streak
-        for i in 1..<activeDates.count {
-            let currentDate = activeDates[i]
-            let previousDate = activeDates[i-1]
-            
-            let daysDifference = calendar.dateComponents([.day], from: previousDate, to: currentDate).day ?? 0
-            
-            if daysDifference == 1 {
-                tempStreak += 1
-            } else {
-                bestStreak = max(bestStreak, tempStreak)
-                tempStreak = 1
-            }
-        }
-        
-        bestStreak = max(bestStreak, tempStreak)
-        
-        return (current: currentStreak, best: bestStreak)
     }
     
     // MARK: - Settings Management
     
     func setSetting<T: Codable>(key: String, value: T) {
-        guard let data = try? JSONEncoder().encode(value),
-              let jsonString = String(data: data, encoding: .utf8) else {
-            return
+        do {
+            try settingsRepository.setValue(value, for: key)
+        } catch {
+            print("❌ Failed to save setting: \(error.localizedDescription)")
         }
-        
-        let upsertSQL = """
-            INSERT OR REPLACE INTO settings (key, value, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP)
-        """
-        
-        var statement: OpaquePointer?
-        
-        if sqlite3_prepare_v2(db, upsertSQL, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_text(statement, 1, key, -1, nil)
-            sqlite3_bind_text(statement, 2, jsonString, -1, nil)
-            sqlite3_step(statement)
-        }
-        
-        sqlite3_finalize(statement)
     }
     
     func getSetting<T: Codable>(key: String, type: T.Type, defaultValue: T) -> T {
-        let querySQL = "SELECT value FROM settings WHERE key = ?"
-        var statement: OpaquePointer?
-        
-        if sqlite3_prepare_v2(db, querySQL, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_text(statement, 1, key, -1, nil)
-            
-            if sqlite3_step(statement) == SQLITE_ROW {
-                let valueString = String(cString: sqlite3_column_text(statement, 0))
-                
-                if let data = valueString.data(using: .utf8),
-                   let value = try? JSONDecoder().decode(type, from: data) {
-                    sqlite3_finalize(statement)
-                    return value
-                }
+        do {
+            if let value = try settingsRepository.getValue(for: key, type: type) {
+                return value
             }
+            return defaultValue
+        } catch {
+            print("❌ Failed to get setting: \(error.localizedDescription)")
+            return defaultValue
         }
-        
-        sqlite3_finalize(statement)
-        return defaultValue
-    }
-
-    // MARK: - Achievement Management
-    
-    func addAchievement(_ achievement: Achievement) -> Bool {
-        // Use INSERT OR REPLACE to handle conflicts (UPSERT)
-        let insertSQL = """
-            INSERT OR REPLACE INTO achievements (id, title, description, icon, type, progress, target, unlocked, unlocked_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-        
-        var statement: OpaquePointer?
-        
-        if sqlite3_prepare_v2(db, insertSQL, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_text(statement, 1, achievement.id.uuidString, -1, nil)
-            sqlite3_bind_text(statement, 2, achievement.title, -1, nil)
-            sqlite3_bind_text(statement, 3, achievement.description, -1, nil)
-            sqlite3_bind_text(statement, 4, achievement.icon, -1, nil)
-            sqlite3_bind_text(statement, 5, achievement.type.rawValue, -1, nil)
-            sqlite3_bind_double(statement, 6, achievement.progress)
-            sqlite3_bind_double(statement, 7, achievement.target)
-            sqlite3_bind_int(statement, 8, achievement.unlocked ? 1 : 0)
-            
-            if let unlockedDate = achievement.unlockedDate {
-                sqlite3_bind_text(statement, 9, ISO8601DateFormatter().string(from: unlockedDate), -1, nil)
-            } else {
-                sqlite3_bind_null(statement, 9)
-            }
-            
-            if sqlite3_step(statement) == SQLITE_DONE {
-                sqlite3_finalize(statement)
-                print("✅ Achievement saved to database: \(achievement.title)")
-                return true
-            } else {
-                let errorMessage = String(cString: sqlite3_errmsg(db))
-                print("❌ Failed to save achievement: \(errorMessage)")
-            }
-        } else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
-            print("❌ Failed to prepare achievement insert: \(errorMessage)")
-        }
-        
-        sqlite3_finalize(statement)
-        return false
-    }
-    
-    func updateAchievement(_ achievement: Achievement) -> Bool {
-        let updateSQL = """
-            UPDATE achievements
-            SET title = ?, description = ?, icon = ?, type = ?, progress = ?, target = ?, unlocked = ?, unlocked_date = ?
-            WHERE id = ?
-        """
-        
-        var statement: OpaquePointer?
-        
-        if sqlite3_prepare_v2(db, updateSQL, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_text(statement, 1, achievement.title, -1, nil)
-            sqlite3_bind_text(statement, 2, achievement.description, -1, nil)
-            sqlite3_bind_text(statement, 3, achievement.icon, -1, nil)
-            sqlite3_bind_text(statement, 4, achievement.type.rawValue, -1, nil)
-            sqlite3_bind_double(statement, 5, achievement.progress)
-            sqlite3_bind_double(statement, 6, achievement.target)
-            sqlite3_bind_int(statement, 7, achievement.unlocked ? 1 : 0)
-            
-            if let unlockedDate = achievement.unlockedDate {
-                sqlite3_bind_text(statement, 8, ISO8601DateFormatter().string(from: unlockedDate), -1, nil)
-            } else {
-                sqlite3_bind_null(statement, 8)
-            }
-            
-            sqlite3_bind_text(statement, 9, achievement.id.uuidString, -1, nil)
-            
-            if sqlite3_step(statement) == SQLITE_DONE {
-                sqlite3_finalize(statement)
-                return true
-            }
-        }
-        
-        sqlite3_finalize(statement)
-        return false
-    }
-    
-    func getAchievements() -> [Achievement] {
-        let querySQL = "SELECT id, title, description, icon, type, progress, target, unlocked, unlocked_date FROM achievements"
-        var statement: OpaquePointer?
-        var achievements: [Achievement] = []
-        
-        if sqlite3_prepare_v2(db, querySQL, -1, &statement, nil) == SQLITE_OK {
-            while sqlite3_step(statement) == SQLITE_ROW {
-                let idString = String(cString: sqlite3_column_text(statement, 0))
-                let title = String(cString: sqlite3_column_text(statement, 1))
-                let description = String(cString: sqlite3_column_text(statement, 2))
-                let icon = String(cString: sqlite3_column_text(statement, 3))
-                let typeString = String(cString: sqlite3_column_text(statement, 4))
-                let progress = sqlite3_column_double(statement, 5)
-                let target = sqlite3_column_double(statement, 6)
-                let unlocked = sqlite3_column_int(statement, 7) == 1
-                
-                var unlockedDate: Date?
-                if let unlockedDatePointer = sqlite3_column_text(statement, 8) {
-                    let unlockedDateString = String(cString: unlockedDatePointer)
-                    unlockedDate = ISO8601DateFormatter().date(from: unlockedDateString)
-                }
-                
-                if let id = UUID(uuidString: idString),
-                   let type = Achievement.AchievementType(rawValue: typeString) {
-                    let achievement = Achievement(
-                        id: id,
-                        title: title,
-                        description: description,
-                        icon: icon,
-                        type: type,
-                        progress: progress,
-                        target: target,
-                        unlocked: unlocked,
-                        unlockedDate: unlockedDate
-                    )
-                    achievements.append(achievement)
-                }
-            }
-        }
-        
-        sqlite3_finalize(statement)
-        return achievements
     }
     
     // MARK: - Debug and Maintenance Methods
     
     func getDebugInfo() -> String {
+        return debugger.getDebugInfo()
+    }
+    
+    func testDatabase() -> String {
+        return debugger.testBasicOperations()
+    }
+    
+    func runComprehensiveTest() {
+        DatabaseTester.runComprehensiveTest()
+    }
+    
+    // MARK: - IMMEDIATE FIX METHOD - Run this now!
+    
+    func fixDatabaseIssuesNow() {
+        print("🚑 EMERGENCY DATABASE FIX STARTING...")
+        print(String(repeating: "🔄", count: 20))
+        
+        // Step 1: Diagnose current state
+        print("\n1. DIAGNOSING CURRENT ISSUES:")
+        diagnoseDatabaseIssues()
+        
+        // Step 2: Nuclear reset
+        print("\n2. PERFORMING NUCLEAR RESET:")
+        resetDatabaseForDevelopment()
+        
+        // Step 3: Test basic functionality
+        print("\n3. TESTING BASIC FUNCTIONALITY:")
+        diagnoseDatabaseIssues()
+        
+        // Step 4: Initialize default data
+        print("\n4. INITIALIZING DEFAULT DATA:")
+        initializeDefaultData()
+        
+        // Step 5: Final verification
+        print("\n5. FINAL VERIFICATION:")
+        let isWorking = verifyDatabaseIntegrity()
+        
+        print(String(repeating: "🔄", count: 20))
+        if isWorking {
+            print("✅ DATABASE EMERGENCY FIX SUCCESSFUL!")
+            print("🎉 Your database should now work properly")
+        } else {
+            print("❌ DATABASE STILL HAS ISSUES")
+            print("📞 Time to consider SwiftData or SQLite.swift migration")
+        }
+        print(String(repeating: "🔄", count: 20))
+    }
+    
+    // MARK: - Verification Methods
+    
+    func verifyDatabaseIntegrity() -> Bool {
+        // Quick verification that database is working
+        do {
+            // Test connection
+            guard connection.getDatabasePointer() != nil else {
+                print("❌ Database connection is nil")
+                return false
+            }
+            
+            // Test basic query
+            let sessions = try sessionRepository.getSessions(for: .day)
+            print("✅ Database verification passed - found \(sessions.count) sessions today")
+            
+            return true
+        } catch {
+            print("❌ Database verification failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+    
+    func diagnoseDatabaseIssues() {
+        print("🔍 COMPREHENSIVE DATABASE DIAGNOSIS")
+        print(String(repeating: "=", count: 50))
+        
+        guard let db = connection.getDatabasePointer() else {
+            print("❌ CRITICAL: No database connection")
+            return
+        }
+        
+        // 1. Check if database file exists
         let fileManager = FileManager.default
-        var dbSize: Int64 = 0
+        print("📁 Database file exists: \(fileManager.fileExists(atPath: dbPath))")
         
         if let attributes = try? fileManager.attributesOfItem(atPath: dbPath) {
-            dbSize = attributes[.size] as? Int64 ?? 0
+            let size = attributes[.size] as? Int64 ?? 0
+            print("📁 Database file size: \(size) bytes")
         }
         
-        // Test database connectivity
-        let isConnected = (db != nil)
-        
-        // Count records in each table
-        var sessionCount = 0
-        var achievementCount = 0
-        var settingCount = 0
-        
+        // 2. Test basic SQLite operations
         var statement: OpaquePointer?
         
-        // Count sessions
-        if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM focus_sessions", -1, &statement, nil) == SQLITE_OK {
+        // Test table creation
+        let testTableSQL = "CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT);"
+        if sqlite3_exec(db, testTableSQL, nil, nil, nil) == SQLITE_OK {
+            print("✅ Basic table creation: OK")
+        } else {
+            let error = String(cString: sqlite3_errmsg(db))
+            print("❌ Basic table creation: FAILED - \(error)")
+        }
+        
+        // Test insert
+        let insertSQL = "INSERT INTO test_table (name) VALUES (?);"
+        if sqlite3_prepare_v2(db, insertSQL, -1, &statement, nil) == SQLITE_OK {
+            sqlite3_bind_text(statement, 1, "test", -1, nil)
+            if sqlite3_step(statement) == SQLITE_DONE {
+                print("✅ Basic insert: OK")
+            } else {
+                let error = String(cString: sqlite3_errmsg(db))
+                print("❌ Basic insert: FAILED - \(error)")
+            }
+            sqlite3_finalize(statement)
+        } else {
+            let error = String(cString: sqlite3_errmsg(db))
+            print("❌ Basic insert prepare: FAILED - \(error)")
+        }
+        
+        // Test select
+        let selectSQL = "SELECT COUNT(*) FROM test_table;"
+        if sqlite3_prepare_v2(db, selectSQL, -1, &statement, nil) == SQLITE_OK {
             if sqlite3_step(statement) == SQLITE_ROW {
-                sessionCount = Int(sqlite3_column_int(statement, 0))
+                let count = sqlite3_column_int(statement, 0)
+                print("✅ Basic select: OK - found \(count) rows")
+            } else {
+                let error = String(cString: sqlite3_errmsg(db))
+                print("❌ Basic select: FAILED - \(error)")
+            }
+            sqlite3_finalize(statement)
+        } else {
+            let error = String(cString: sqlite3_errmsg(db))
+            print("❌ Basic select prepare: FAILED - \(error)")
+        }
+        
+        // 3. Check our actual tables
+        let tables = ["focus_sessions", "achievements", "settings"]
+        for table in tables {
+            let checkSQL = "SELECT COUNT(*) FROM \(table);"
+            if sqlite3_prepare_v2(db, checkSQL, -1, &statement, nil) == SQLITE_OK {
+                if sqlite3_step(statement) == SQLITE_ROW {
+                    let count = sqlite3_column_int(statement, 0)
+                    print("✅ Table \(table): \(count) rows")
+                } else {
+                    let error = String(cString: sqlite3_errmsg(db))
+                    print("❌ Table \(table): FAILED - \(error)")
+                }
+                sqlite3_finalize(statement)
+            } else {
+                let error = String(cString: sqlite3_errmsg(db))
+                print("❌ Table \(table) check: FAILED - \(error)")
             }
         }
-        sqlite3_finalize(statement)
         
-        // Count achievements  
-        if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM achievements", -1, &statement, nil) == SQLITE_OK {
-            if sqlite3_step(statement) == SQLITE_ROW {
-                achievementCount = Int(sqlite3_column_int(statement, 0))
+        // 4. Check table schemas
+        for table in tables {
+            print("📁 Schema for \(table):")
+            let schemaSQL = "PRAGMA table_info(\(table));"
+            if sqlite3_prepare_v2(db, schemaSQL, -1, &statement, nil) == SQLITE_OK {
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    let name = String(cString: sqlite3_column_text(statement, 1))
+                    let type = String(cString: sqlite3_column_text(statement, 2))
+                    print("   \(name): \(type)")
+                }
+                sqlite3_finalize(statement)
             }
         }
-        sqlite3_finalize(statement)
         
-        // Count settings
-        if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM settings", -1, &statement, nil) == SQLITE_OK {
-            if sqlite3_step(statement) == SQLITE_ROW {
-                settingCount = Int(sqlite3_column_int(statement, 0))
-            }
-        }
-        sqlite3_finalize(statement)
+        // Clean up test table
+        sqlite3_exec(db, "DROP TABLE IF EXISTS test_table;", nil, nil, nil)
         
-        return """
-        📊 Database Debug Info:
-        • Path: \(dbPath)
-        • Size: \(ByteCountFormatter.string(fromByteCount: dbSize, countStyle: .file))
-        • Connected: \(isConnected ? "✅" : "❌")
-        • Sessions: \(sessionCount)
-        • Achievements: \(achievementCount) 
-        • Settings: \(settingCount)
-        """
+        print(String(repeating: "=", count: 50))
+        print("🔍 DIAGNOSIS COMPLETE")
     }
     
     func clearAllData() {
-        var errorMessage: UnsafeMutablePointer<CChar>?
+        do {
+            // Delete all sessions
+            let sessions = try sessionRepository.getSessions(for: .all)
+            for session in sessions {
+                try sessionRepository.delete(id: session.id)
+            }
+            
+            // Delete all achievements
+            let achievements = try achievementRepository.getAllAchievements()
+            for achievement in achievements {
+                try achievementRepository.delete(id: achievement.id.uuidString)
+            }
+            
+            // Clear all settings
+            try settingsRepository.clearAllSettings()
+            
+            print("🗑️ Database cleared")
+        } catch {
+            print("❌ Failed to clear database: \(error.localizedDescription)")
+        }
+    }
+    
+    // MARK: - Development utilities
+    
+    func resetDatabaseForDevelopment() {
+        print("🔄 Resetting database for development...")
         
-        if sqlite3_exec(db, "DELETE FROM focus_sessions;", nil, nil, &errorMessage) != SQLITE_OK {
-            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
-            print("❌ Failed to clear sessions: \(error)")
-            sqlite3_free(errorMessage)
+        // NUCLEAR OPTION: Delete the entire database file
+        do {
+            let fileManager = FileManager.default
+            if fileManager.fileExists(atPath: dbPath) {
+                try fileManager.removeItem(atPath: dbPath)
+                print("💥 Database file deleted: \(dbPath)")
+            }
+            
+            // Also delete WAL and SHM files
+            let walPath = dbPath + "-wal"
+            let shmPath = dbPath + "-shm"
+            
+            if fileManager.fileExists(atPath: walPath) {
+                try fileManager.removeItem(atPath: walPath)
+                print("💥 WAL file deleted")
+            }
+            
+            if fileManager.fileExists(atPath: shmPath) {
+                try fileManager.removeItem(atPath: shmPath)
+                print("💥 SHM file deleted")
+            }
+            
+        } catch {
+            print("❌ Failed to delete database files: \(error.localizedDescription)")
         }
         
-        if sqlite3_exec(db, "DELETE FROM achievements;", nil, nil, &errorMessage) != SQLITE_OK {
-            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
-            print("❌ Failed to clear achievements: \(error)")
-            sqlite3_free(errorMessage)
+        // Disconnect and reconnect to create fresh database
+        connection.disconnect()
+        
+        do {
+            try connection.connect()
+            print("✅ Fresh database connection established")
+        } catch {
+            print("❌ Failed to reconnect: \(error.localizedDescription)")
         }
         
-        if sqlite3_exec(db, "DELETE FROM settings;", nil, nil, &errorMessage) != SQLITE_OK {
-            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
-            print("❌ Failed to clear settings: \(error)")
-            sqlite3_free(errorMessage)
+        // Recreate tables with fresh schema
+        createTables()
+        
+        print("✅ Database completely reset - pristine state")
+    }
+    
+    func initializeDefaultData() {
+        print("🌱 Initializing default data for development...")
+        
+        // Create default achievements
+        let defaultAchievements = [
+            Achievement(
+                title: "First Focus",
+                description: "Complete your first focus session",
+                icon: "🎯",
+                type: .sessionsCompleted,
+                progress: 0,
+                target: 1
+            ),
+            Achievement(
+                title: "Focus Master",
+                description: "Complete 10 focus sessions",
+                icon: "🏆",
+                type: .sessionsCompleted,
+                progress: 0,
+                target: 10
+            ),
+            Achievement(
+                title: "Time Keeper",
+                description: "Focus for 2 hours total",
+                icon: "⏰",
+                type: .totalFocusTime,
+                progress: 0,
+                target: 120
+            ),
+            Achievement(
+                title: "Streak Starter",
+                description: "Maintain a 3-day focus streak",
+                icon: "🔥",
+                type: .streak,
+                progress: 0,
+                target: 3
+            )
+        ]
+        
+        for achievement in defaultAchievements {
+            if addAchievement(achievement) {
+                print("✅ Created default achievement: \(achievement.title)")
+            } else {
+                print("❌ Failed to create achievement: \(achievement.title)")
+            }
         }
         
-        print("🗑️ Database cleared")
+        print("✅ Default data initialization complete")
+    }
+    
+    // MARK: - Repository Access
+    
+    func getSessionRepository() -> SessionRepository {
+        return sessionRepository
+    }
+    
+    func getAchievementRepository() -> AchievementRepository {
+        return achievementRepository
+    }
+    
+    func getSettingsRepository() -> SettingsRepository {
+        return settingsRepository
     }
 }

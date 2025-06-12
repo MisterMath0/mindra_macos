@@ -34,15 +34,14 @@ class StatsManager: ObservableObject {
     private var sessionStartTime: Date?
     
     init() {
-        self.database = DatabaseManager()
+        self.database = DatabaseManager.shared  // Use singleton instead
         self.settingsManager = SettingsManager()
         
-        // Migrate sessionsCompleted from UserDefaults to database if needed
-        migrateUserDefaultsToDatabase()
-        
+        // Load existing data
         fetchStats(for: settingsManager.displayPeriod)
         loadAchievements()
-        initializeDefaultAchievements()
+        
+        print("📊 Stats Manager initialized")
     }
     
     // MARK: - Computed Properties for easy access
@@ -125,24 +124,26 @@ class StatsManager: ObservableObject {
     
     private func loadAchievements() {
         achievements = database.getAchievements()
+        print("🏆 Loaded \(achievements.count) achievements from database")
     }
     
-    private func initializeDefaultAchievements() {
-        // Check if achievements already exist
-        if achievements.isEmpty {
-            let defaultAchievements = createDefaultAchievements()
-            
-            for achievement in defaultAchievements {
-                if database.addAchievement(achievement) {
-                    print("✅ Created achievement: \(achievement.title)")
-                } else {
-                    print("❌ Failed to create achievement: \(achievement.title)")
-                }
+    // MARK: - One-time setup methods (call manually when needed)
+    
+    func initializeDefaultAchievements() {
+        print("🔄 Initializing default achievements...")
+        let defaultAchievements = createDefaultAchievements()
+        
+        for achievement in defaultAchievements {
+            if database.addAchievement(achievement) {
+                print("✅ Created achievement: \(achievement.title)")
+            } else {
+                print("❌ Failed to create achievement: \(achievement.title)")
             }
-            
-            // Reload achievements from database
-            loadAchievements()
         }
+        
+        // Reload achievements from database
+        loadAchievements()
+        print("✅ Default achievements initialization complete")
     }
     
     private func createDefaultAchievements() -> [Achievement] {
@@ -513,49 +514,17 @@ class StatsManager: ObservableObject {
     func forceRefreshAchievements() {
         print("🔄 Force refreshing achievements...")
         loadAchievements()
-        if achievements.isEmpty {
-            print("⚠️ Still no achievements found, reinitializing...")
-            initializeDefaultAchievements()
-        }
         print("✅ Achievements refresh complete: \(achievements.count) achievements loaded")
     }
     
-    // MARK: - Migration from UserDefaults to Database
+    // MARK: - Simplified session tracking (no UserDefaults migration)
     
-    private func migrateUserDefaultsToDatabase() {
-        let migrationKey = "stats_migrated_v1"
-        
-        // Check if we've already migrated
-        if database.getSetting(key: migrationKey, type: Bool.self, defaultValue: false) {
-            return
-        }
-        
-        print("🔄 Migrating UserDefaults data to database...")
-        
-        // Migrate sessionsCompleted from UserDefaults
-        let oldSessionsCompleted = UserDefaults.standard.integer(forKey: "sessionsCompleted")
-        if oldSessionsCompleted > 0 {
-            print("📊 Migrating \(oldSessionsCompleted) completed sessions from UserDefaults")
-            database.setSetting(key: "sessionsCompleted", value: oldSessionsCompleted)
-            
-            // Clear the old UserDefaults value
-            UserDefaults.standard.removeObject(forKey: "sessionsCompleted")
-        }
-        
-        // Mark migration as complete
-        database.setSetting(key: migrationKey, value: true)
-        print("✅ UserDefaults migration completed")
-    }
-    
-    // Get sessions completed count from database instead of UserDefaults
     var sessionsCompletedCount: Int {
-        return database.getSetting(key: "sessionsCompleted", type: Int.self, defaultValue: 0)
+        return summary.completedSessions
     }
     
-    // Update sessions completed count in database
     private func incrementSessionsCompleted() {
-        let currentCount = sessionsCompletedCount
-        database.setSetting(key: "sessionsCompleted", value: currentCount + 1)
-        print("📊 Sessions completed count updated: \(currentCount + 1)")
+        // This is now handled automatically through the summary calculation
+        print("📊 Session completion tracked in summary")
     }
 }
