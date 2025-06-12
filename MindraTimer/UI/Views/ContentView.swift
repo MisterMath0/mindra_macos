@@ -214,8 +214,14 @@ struct ContentView: View {
     
     private func mainContentArea(geometry: GeometryProxy) -> some View {
         VStack(spacing: max(32, geometry.size.height * 0.04)) {
+            // Timer mode header (Focus, Short Break, Long Break) - Only in pomodoro mode
+            if appModeManager.currentMode == .pomodoro {
+                timerModeHeader(geometry: geometry)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+            
             // Clock mode: Show personalized greetings
-            // Focus mode: Show focus prompts
+            // Focus mode: Show focus prompts (but not mode buttons since they're in header now)
             if statsManager.settings.showGreetings {
                 greetingSection(geometry: geometry)
                     .transition(.scale.combined(with: .opacity))
@@ -240,16 +246,8 @@ struct ContentView: View {
     
     private func greetingSection(geometry: GeometryProxy) -> some View {
         VStack(spacing: max(16, geometry.size.height * 0.02)) {
-            if appModeManager.currentMode == .pomodoro {
-                // Mode selection buttons with animations
-                HStack(spacing: max(12, geometry.size.width * 0.015)) {
-                    ForEach(TimerMode.allCases, id: \.self) { mode in
-                        modeButton(mode: mode, geometry: geometry)
-                    }
-                }
-                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: timerManager.currentMode)
-            } else {
-                // Clock mode: Personalized time-dependent greetings
+            if appModeManager.currentMode == .clock {
+                // Clock mode: Personalized time-dependent greetings only
                 let greeting = greetingManager.getGreeting()
                 if !greeting.isEmpty {
                     Text(greeting)
@@ -259,10 +257,22 @@ struct ContentView: View {
                         .animation(.easeInOut(duration: 0.5), value: greeting)
                 }
             }
+            // Note: Timer mode buttons are now in timerModeHeader, not here
         }
     }
     
-    private func modeButton(mode: TimerMode, geometry: GeometryProxy) -> some View {
+    // MARK: - Timer Mode Header
+    
+    private func timerModeHeader(geometry: GeometryProxy) -> some View {
+        HStack(spacing: max(12, geometry.size.width * 0.015)) {
+            ForEach(TimerMode.allCases, id: \.self) { mode in
+                timerModeButton(mode: mode, geometry: geometry)
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: timerManager.currentMode)
+    }
+    
+    private func timerModeButton(mode: TimerMode, geometry: GeometryProxy) -> some View {
         Button(action: { 
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 timerManager.setMode(mode)
@@ -271,8 +281,8 @@ struct ContentView: View {
             Text(mode.displayName)
                 .font(.system(size: max(14, geometry.size.width * 0.016), weight: .medium, design: .rounded))
                 .foregroundColor(timerManager.currentMode == mode ? .white : .white.opacity(0.6))
-                .padding(.horizontal, max(16, geometry.size.width * 0.02))
-                .padding(.vertical, max(8, geometry.size.height * 0.01))
+                .padding(.horizontal, max(20, geometry.size.width * 0.025))
+                .padding(.vertical, max(10, geometry.size.height * 0.012))
                 .background(
                     RoundedRectangle(cornerRadius: max(8, geometry.size.width * 0.01))
                         .fill(timerManager.currentMode == mode ? mode.color : Color.white.opacity(0.08))
@@ -283,6 +293,7 @@ struct ContentView: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: timerManager.currentMode)
     }
     
+
     private func clockDisplay(geometry: GeometryProxy) -> some View {
         VStack(spacing: max(16, geometry.size.height * 0.02)) {
             // Current time with BLACK weight - LARGER
