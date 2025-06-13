@@ -1,0 +1,94 @@
+name: Build and Release MindraTimer
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0.0, v1.0.1, etc.
+  workflow_dispatch:  # Allows manual triggering
+
+env:
+  APP_NAME: "MindraTimer"
+  SCHEME_NAME: "MindraTimer"
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Get version info
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> $GITHUB_OUTPUT
+          else
+            VERSION=$(git describe --tags --always --dirty)
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build app
+        run: |
+          xcodebuild \
+            -scheme "$SCHEME_NAME" \
+            -project "$APP_NAME.xcodeproj" \
+            -configuration Release \
+            -derivedDataPath build/ \
+            -archivePath "build/$APP_NAME.xcarchive" \
+            archive
+
+      - name: Export app
+        run: |
+          cat > ExportOptions.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>mac-application</string>
+              <key>destination</key>
+              <string>export</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>stripSwiftSymbols</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild \
+            -exportArchive \
+            -archivePath "build/$APP_NAME.xcarchive" \
+            -exportPath "build/export/" \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: Create DMG
+        run: |
+          mkdir -p dmg-contents
+          cp -R "build/export/$APP_NAME.app" dmg-contents/
+          ln -s /Applications dmg-contents/Applications
+          
+          hdiutil create -volname "$APP_NAME-${{ steps.version.outputs.version }}" \
+            -srcfolder dmg-contents \
+            -ov -format UDZO \
+            "$APP_NAME-${{ steps.version.outputs.version }}.dmg"
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.is_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.version }}.dmg
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
