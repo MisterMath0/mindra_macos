@@ -301,7 +301,7 @@ struct ContentView: View {
         VStack(spacing: max(28, geometry.size.height * 0.035)) {
             // Current time - ORIGINAL BOLD SIZE
             Text(getCurrentTime())
-                .font(.system(size: max(140, min(geometry.size.width * 0.2, 280)), weight: .black, design: .rounded))
+                .font(.system(size: max(60, min(geometry.size.width * 0.2, 200)), weight: .black, design: .rounded))
                 .foregroundColor(.white)
                 .tracking(max(6, geometry.size.width * 0.007))
                 .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
@@ -333,21 +333,21 @@ struct ContentView: View {
     
     private func pomodoroDisplay(geometry: GeometryProxy) -> some View {
         VStack(spacing: max(32, geometry.size.height * 0.04)) {
-            // Timer display with enhanced progress ring - ORIGINAL SIZE
+            // Timer display with enhanced progress ring - OPTIMIZED SIZE
             ZStack {
-                // Background circle - ORIGINAL THICKNESS
+                // Background circle - SLIGHTLY SMALLER
                 Circle()
-                    .stroke(Color.white.opacity(0.1), lineWidth: max(8, geometry.size.width * 0.008))
-                    .frame(width: max(280, geometry.size.width * 0.32))
+                    .stroke(Color.white.opacity(0.1), lineWidth: max(6, geometry.size.width * 0.006))
+                    .frame(width: max(240, geometry.size.width * 0.28))
                 
-                // Progress circle - ORIGINAL BOLD LOOK
+                // Progress circle - SLIGHTLY SMALLER
                 Circle()
                     .trim(from: 0, to: timerManager.progress)
                     .stroke(
                         timerManager.currentMode.color,
-                        style: StrokeStyle(lineWidth: max(8, geometry.size.width * 0.008), lineCap: .round)
+                        style: StrokeStyle(lineWidth: max(6, geometry.size.width * 0.006), lineCap: .round)
                     )
-                    .frame(width: max(280, geometry.size.width * 0.32))
+                    .frame(width: max(240, geometry.size.width * 0.28))
                     .rotationEffect(.degrees(-90))
                     .shadow(
                         color: timerManager.currentMode.color.opacity(0.4), 
@@ -357,11 +357,11 @@ struct ContentView: View {
                     )
                     .animation(.easeInOut(duration: 1), value: timerManager.progress)
                 
-                // Timer text - ORIGINAL CHUNKY SIZE
+                // Timer text - REDUCED SIZE FOR BETTER PROPORTIONS
                 Text(timerManager.formattedTime)
-                    .font(.system(size: max(96, min(geometry.size.width * 0.14, 160)), weight: .black, design: .rounded))
+                    .font(.system(size: max(72, min(geometry.size.width * 0.11, 120)), weight: .black, design: .rounded))
                     .foregroundColor(.white)
-                    .tracking(max(4, geometry.size.width * 0.005))
+                    .tracking(max(3, geometry.size.width * 0.004))
                     .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                     .animation(.easeInOut(duration: 0.2), value: timerManager.formattedTime)
             }

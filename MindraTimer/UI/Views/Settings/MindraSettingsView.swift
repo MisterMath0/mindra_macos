@@ -137,11 +137,13 @@ struct MindraSettingsView: View {
             VStack(spacing: 0) {
                 // FULL PAGE SETTINGS LAYOUT
                 HStack(spacing: 0) {
-                    // SIDEBAR
-                    SettingsSidebar(
+                    // SIDEBAR WITH BACK BUTTON
+                    SettingsSidebarWithBack(
                         selectedSection: $coordinator.selectedSection,
                         geometry: geometry
                     )
+                    .environmentObject(navigationManager)
+                    .environmentObject(appModeManager)
                     
                     // MAIN CONTENT
                     SettingsDetailView(
@@ -156,12 +158,7 @@ struct MindraSettingsView: View {
                     .environmentObject(quotesManager)
                     .environmentObject(greetingManager)
                 }
-                
-                // BOTTOM NAVIGATION - INTEGRATED LIKE OTHER PAGES
-                SettingsBottomNavigation(geometry: geometry)
-                    .environmentObject(navigationManager)
-                    .environmentObject(windowManager)
-                    .environmentObject(timerManager)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(AppColors.primaryBackground)
         }
@@ -180,102 +177,106 @@ struct MindraSettingsView: View {
     }
 }
 
-// MARK: - SETTINGS BOTTOM NAVIGATION
+// MARK: - Settings Sidebar with Back Button
 
-struct SettingsBottomNavigation: View {
+struct SettingsSidebarWithBack: View {
+    @Binding var selectedSection: SettingsSection
     let geometry: GeometryProxy
     @EnvironmentObject var navigationManager: AppNavigationManager
-    @EnvironmentObject var windowManager: WindowManager
-    @EnvironmentObject var timerManager: TimerManager
+    @EnvironmentObject var appModeManager: AppModeManager
+    
+    private let sectionGroups: [(String, [(SettingsSection, String, String)])] = [
+        ("CORE", [
+            (.timer, "timer", "Timer"),
+            (.clock, "clock", "Clock"),
+            (.sounds, "speaker.wave.2", "Sounds"),
+            (.stats, "chart.bar", "Stats")
+        ]),
+        ("PERSONALIZATION", [
+            (.profile, "person.circle", "Profile"),
+            (.quotes, "quote.bubble", "Quotes"),
+            (.appearance, "paintbrush", "Appearance")
+        ]),
+        ("OTHER", [
+            (.general, "gearshape", "General"),
+            (.about, "info.circle", "About")
+        ])
+    ]
     
     var body: some View {
-        HStack {
-            // Left side controls
-            HStack(spacing: max(20, geometry.size.width * 0.025)) {
-                navButton(icon: "bell", action: { }, geometry: geometry)
-            }
-            .frame(width: max(60, geometry.size.width * 0.08), alignment: .leading)
-            
-            Spacer()
-            
-            // Center navigation
-            HStack(spacing: max(32, geometry.size.width * 0.04)) {
-                navButton(
-                    icon: "house.fill",
-                    action: { 
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+        VStack(alignment: .leading, spacing: 0) {
+            // HEADER WITH BACK BUTTON
+            VStack(alignment: .leading, spacing: 16) {
+                // Back Button
+                Button(action: {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        // Go back to the previous mode (clock or focus)
+                        if appModeManager.currentMode == .clock {
                             navigationManager.navigateTo(.clock)
-                        }
-                    },
-                    geometry: geometry,
-                    isActive: false
-                )
-                navButton(
-                    icon: "timer",
-                    action: { 
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        } else {
                             navigationManager.navigateTo(.focus)
                         }
-                    },
-                    geometry: geometry,
-                    isActive: false
-                )
+                    }
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .medium))
+                        Text("Back")
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                    }
+                    .foregroundColor(AppColors.primaryText)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(AppColors.cardBackground)
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                // Settings Title
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Settings")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(AppColors.primaryText)
+                    
+                    Text("Customize your experience")
+                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .foregroundColor(AppColors.secondaryText)
+                }
             }
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 24)
+            .padding(.top, 32)
+            .padding(.bottom, 32)
+            
+            // SECTIONS
+            VStack(alignment: .leading, spacing: 24) {
+                ForEach(sectionGroups, id: \.0) { group in
+                    SettingsSectionGroup(
+                        title: group.0,
+                        items: group.1,
+                        selectedSection: $selectedSection
+                    )
+                }
+            }
+            .padding(.leading, 24)
             
             Spacer()
             
-            // Right side controls
-            HStack(spacing: max(16, geometry.size.width * 0.02)) {
-                navButton(
-                    icon: "rectangle.compress.vertical", 
-                    action: { 
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                            windowManager.toggleCompactMode()
-                        }
-                    }, 
-                    geometry: geometry
-                )
-                navButton(
-                    icon: windowManager.isAlwaysOnTop ? "pin.fill" : "pin", 
-                    action: { 
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            windowManager.toggleAlwaysOnTop()
-                        }
-                    }, 
-                    geometry: geometry, 
-                    isActive: windowManager.isAlwaysOnTop
-                )
-                navButton(
-                    icon: "gearshape", 
-                    action: { }, // Already in settings
-                    geometry: geometry,
-                    isActive: true
-                )
+            // FOOTER
+            VStack(spacing: 4) {
+                Text("MindraTimer")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(AppColors.primaryText)
+                Text("Version 1.0.0")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundColor(AppColors.tertiaryText)
             }
-            .frame(width: max(120, geometry.size.width * 0.15), alignment: .trailing)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
         }
-        .padding(.horizontal, max(40, geometry.size.width * 0.05))
-        .padding(.bottom, max(32, geometry.size.height * 0.04))
-    }
-    
-    private func navButton(icon: String, action: @escaping () -> Void, geometry: GeometryProxy, isActive: Bool = false) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: max(18, geometry.size.width * 0.02), weight: .medium))
-                .foregroundColor(isActive ? timerManager.currentMode.color : .white.opacity(0.6))
-                .frame(
-                    width: max(44, geometry.size.width * 0.045),
-                    height: max(44, geometry.size.width * 0.045)
-                )
-                .background(
-                    Circle()
-                        .fill(isActive ? timerManager.currentMode.color.opacity(0.15) : Color.clear)
-                )
-                .scaleEffect(isActive ? 1.05 : 1.0)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isActive)
+        .frame(width: max(280, geometry.size.width * 0.28))
+        .background(AppColors.sidebarBackground)
     }
 }
 
