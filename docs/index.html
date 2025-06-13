@@ -5,64 +5,162 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindraTimer - A Beautiful Timer App for macOS</title>
     <style>
+        :root {
+            --primary-color: #007AFF;
+            --background-color: #1C1C1E;
+            --surface-color: #2C2C2E;
+            --text-color: #FFFFFF;
+            --text-secondary: #8E8E93;
+            --accent-color: #0A84FF;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             line-height: 1.6;
             margin: 0;
             padding: 0;
-            color: #333;
+            color: var(--text-color);
+            background-color: var(--background-color);
         }
+
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
         }
+
         header {
             text-align: center;
-            margin-bottom: 3rem;
+            margin-bottom: 4rem;
+            padding: 4rem 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), var(--background-color));
         }
+
+        .app-icon {
+            width: 120px;
+            height: 120px;
+            border-radius: 22px;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
         h1 {
-            font-size: 2.5rem;
+            font-size: 3.5rem;
             margin-bottom: 1rem;
-            color: #2c3e50;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
         }
-        .download-section {
-            text-align: center;
-            margin: 3rem 0;
-            padding: 2rem;
-            background: #f8f9fa;
-            border-radius: 10px;
-        }
-        .download-button {
-            display: inline-block;
-            padding: 1rem 2rem;
-            background: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-            transition: background 0.3s;
-        }
-        .download-button:hover {
-            background: #0056b3;
-        }
-        .features {
-            margin: 3rem 0;
-        }
-        .feature {
+
+        .subtitle {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
             margin-bottom: 2rem;
         }
+
+        .download-section {
+            text-align: center;
+            margin: 4rem 0;
+            padding: 3rem;
+            background: var(--surface-color);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .download-button {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(0,122,255,0.3);
+        }
+
+        .download-button:hover {
+            background: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,122,255,0.4);
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 4rem 0;
+        }
+
+        .feature {
+            background: var(--surface-color);
+            padding: 2rem;
+            border-radius: 16px;
+            transition: transform 0.3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-5px);
+        }
+
         .feature h3 {
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .feature p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .screenshots {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 4rem 0;
+        }
+
+        .screenshot {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .screenshot:hover {
+            transform: scale(1.02);
+        }
+
+        .screenshot img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
+            <img src="assets/AppIcon.appiconset/icon_256x256.png" alt="MindraTimer Icon" class="app-icon">
             <h1>MindraTimer</h1>
-            <p>A beautiful and intuitive timer app for macOS</p>
+            <p class="subtitle">A beautiful and intuitive timer app for macOS</p>
         </header>
 
         <div class="download-section">
@@ -72,10 +170,9 @@
         </div>
 
         <div class="features">
-            <h2>Features</h2>
             <div class="feature">
                 <h3>Beautiful Interface</h3>
-                <p>Enjoy a clean, modern interface designed for macOS</p>
+                <p>Enjoy a clean, modern interface designed for macOS with dark mode support</p>
             </div>
             <div class="feature">
                 <h3>Multiple Timer Modes</h3>
@@ -88,6 +185,30 @@
             <div class="feature">
                 <h3>Session Tracking</h3>
                 <p>Keep track of your focus sessions and progress</p>
+            </div>
+        </div>
+
+        <div class="screenshots">
+            <div class="screenshot">
+                <img src="assets/Screenshots/main_page.png" alt="Main Timer View">
+            </div>
+            <div class="screenshot">
+                <img src="assets/Screenshots/focus_page.png" alt="Focus Page View">
+            </div>
+            <div class="screenshot">
+                <img src="assets/Screenshots/stats_page_progress.png" alt="Statistics View">
+            </div>
+            <div class="screenshot">
+                <img src="assets/Screenshots/achievements.png" alt="Achievements View">
+            </div>
+            <div class="screenshot">
+                <img src="assets/Screenshots/profile_page.png" alt="Profile Settings View">
+            </div>
+            <div class="screenshot">
+                <img src="assets/Screenshots/quotes_categories.png" alt="Quotes Categories View">
+            </div>
+            <div class="screenshot">
+                <img src="assets/Screenshots/sound_settings.png" alt="Sound Settings View">
             </div>
         </div>
     </div>
