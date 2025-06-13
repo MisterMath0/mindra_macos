@@ -134,7 +134,7 @@ struct QuotesSettingsView: View {
                             ) {
                                 // Refresh quote action
                                 quotesManager.updateQuoteIfNeeded(force: true)
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                withAnimation(Animation.spring(response: 0.4, dampingFraction: 0.8)) {
                                     showCurrentQuote.toggle()
                                 }
                             }
@@ -209,7 +209,7 @@ struct QuotesSettingsView: View {
                 }
             }
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: coordinator.showQuotes)
+        .animation(Animation.spring(response: 0.4, dampingFraction: 0.8), value: coordinator.showQuotes)
         .onAppear {
             showCurrentQuote = true
         }
@@ -329,7 +329,7 @@ struct ModernQuoteIntervalSlider: View {
                 HStack(spacing: 12) {
                     ForEach([5, 10, 15, 30], id: \.self) { preset in
                         Button(action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            withAnimation(Animation.spring(response: 0.3, dampingFraction: 0.7)) {
                                 interval = Double(preset)
                             }
                             onValueChanged(Double(preset))
@@ -354,7 +354,7 @@ struct ModernQuoteIntervalSlider: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isDragging)
+        .animation(Animation.spring(response: 0.3, dampingFraction: 0.7), value: isDragging)
     }
     
     private func progressWidth(for totalWidth: CGFloat) -> CGFloat {
@@ -416,7 +416,7 @@ struct ModernQuoteDisplayCard: View {
                 AppButton.secondary(
                     "Get New Quote",
                     action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(Animation.spring(response: 0.3, dampingFraction: 0.7)) {
                             isRefreshing = true
                             showQuote = false
                         }
@@ -424,7 +424,7 @@ struct ModernQuoteDisplayCard: View {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             onRefresh()
                             
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            withAnimation(Animation.spring(response: 0.4, dampingFraction: 0.8)) {
                                 showQuote = true
                                 isRefreshing = false
                             }
@@ -435,7 +435,7 @@ struct ModernQuoteDisplayCard: View {
                 )
             }
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showQuote)
+        .animation(Animation.spring(response: 0.4, dampingFraction: 0.8), value: showQuote)
     }
 }
 
@@ -543,7 +543,7 @@ struct QuoteTipRow: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(isCompleted ? .white : AppColors.tertiaryText)
             }
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCompleted)
+            .animation(Animation.spring(response: 0.3, dampingFraction: 0.7), value: isCompleted)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)

@@ -10,6 +10,7 @@ import SwiftUI
 @main
 struct MindraTimerApp: App {
     @StateObject private var windowManager = WindowManager()
+    @StateObject private var navigationManager = AppNavigationManager()
     @StateObject private var statsManager = StatsManager()
     @StateObject private var timerManager = TimerManager()
     @StateObject private var appModeManager = AppModeManager()
@@ -27,6 +28,7 @@ struct MindraTimerApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(windowManager)
+                .environmentObject(navigationManager)
                 .environmentObject(statsManager)
                 .environmentObject(timerManager)
                 .environmentObject(appModeManager)

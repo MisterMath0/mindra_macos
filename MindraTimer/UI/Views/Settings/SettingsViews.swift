@@ -164,7 +164,7 @@ struct TimerSettingsView: View {
                 }
             }
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: coordinator.soundEnabled)
+        .animation(Animation.spring(response: 0.4, dampingFraction: 0.8), value: coordinator.soundEnabled)
     }
     
     // MARK: - Helper Views
@@ -341,7 +341,7 @@ struct ProfileSettingsView: View {
                 }
             }
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isEditing)
+        .animation(Animation.spring(response: 0.4, dampingFraction: 0.8), value: isEditing)
         .onAppear {
             tempName = coordinator.tempUserName
         }
@@ -403,14 +403,14 @@ struct ProfileSettingsView: View {
     
     private func startEditing() {
         tempName = coordinator.userName
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+        withAnimation(Animation.spring(response: 0.4, dampingFraction: 0.8)) {
             isEditing = true
         }
     }
     
     private func cancelEditing() {
         tempName = coordinator.userName
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+        withAnimation(Animation.spring(response: 0.4, dampingFraction: 0.8)) {
             isEditing = false
         }
     }
@@ -421,7 +421,7 @@ struct ProfileSettingsView: View {
         quotesManager.setUserName(coordinator.userName.isEmpty ? nil : coordinator.userName)
         greetingManager.setUserName(coordinator.userName.isEmpty ? nil : coordinator.userName)
         
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+        withAnimation(Animation.spring(response: 0.4, dampingFraction: 0.8)) {
             isEditing = false
         }
     }
@@ -432,7 +432,7 @@ struct ProfileSettingsView: View {
         quotesManager.setUserName(nil)
         greetingManager.setUserName(nil)
         
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+        withAnimation(Animation.spring(response: 0.4, dampingFraction: 0.8)) {
             isEditing = false
         }
     }
@@ -468,13 +468,17 @@ struct ClockSettingsView: View {
                 title: "Clock Settings",
                 subtitle: "Customize your clock display"
             ) {
-                SettingsCard(title: "Clock Preferences") {
-                    SettingsToggle(
+                VStack(spacing: 24) {
+                    SettingsToggleRow(
                         title: "Show greetings",
+                        description: "Display personalized greetings",
                         isOn: Binding(
                             get: { coordinator.showGreetings },
                             set: { coordinator.updateShowGreetings($0, statsManager: statsManager) }
-                        )
+                        ),
+                        action: { newValue in
+                            coordinator.updateShowGreetings(newValue, statsManager: statsManager)
+                        }
                     )
                 }
             }
@@ -482,43 +486,37 @@ struct ClockSettingsView: View {
     }
 }
 
-struct AboutSettingsView: View {
-    var body: some View {
-        SettingsScrollContainer {
-            SettingsContentSection(
-                title: "About MindraTimer",
-                subtitle: "A focused productivity timer for macOS"
-            ) {
-                SettingsCard(title: "Version Information") {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Version 1.0.0")
-                            .font(.system(size: 16, weight: .medium, design: .rounded))
-                            .foregroundColor(AppColors.primaryText)
-                        
-                        Text("Built with SwiftUI for macOS")
-                            .font(.system(size: 14, weight: .regular, design: .rounded))
-                            .foregroundColor(AppColors.secondaryText)
-                    }
-                }
-            }
-        }
-    }
-}
+// MARK: - Settings Toggle Row Component
 
-struct PlaceholderSettingsView: View {
+struct SettingsToggleRow: View {
     let title: String
+    let description: String
+    @Binding var isOn: Bool
+    let action: (Bool) -> Void
     
     var body: some View {
-        SettingsScrollContainer {
-            SettingsContentSection(
-                title: title,
-                subtitle: "Coming soon..."
-            ) {
-                SettingsCard(title: "Under Development") {
-                    Text("This section is currently being developed.")
-                        .foregroundColor(AppColors.secondaryText)
-                }
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                    .foregroundColor(AppColors.primaryText)
+                
+                Text(description)
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundColor(AppColors.secondaryText)
             }
+            
+            Spacer()
+            
+            Toggle("", isOn: Binding(
+                get: { isOn },
+                set: { newValue in
+                    isOn = newValue
+                    action(newValue)
+                }
+            ))
+            .toggleStyle(SwitchToggleStyle(tint: AppColors.accent))
         }
+        .padding(.vertical, 8)
     }
 }

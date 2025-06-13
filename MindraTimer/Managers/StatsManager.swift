@@ -548,4 +548,26 @@ class StatsManager: ObservableObject {
         // This is now handled automatically through the summary calculation
         print("📊 Session completion tracked in summary")
     }
+    
+    // MARK: - 🎨 PREMIUM CLOCK STATS METHODS
+    
+    /// Get sessions completed today for premium clock display
+    func getSessionsToday() -> Int {
+        return todaysSessions.filter { $0.completed && $0.mode == .focus }.count
+    }
+    
+    /// Get current streak for premium clock display
+    func getCurrentStreak() -> Int {
+        return summary.currentStreak
+    }
+    
+    /// Get total hours focused for premium clock display
+    func getTotalHours() -> Int {
+        return Int(summary.totalFocusTime / 60) // Convert minutes to hours
+    }
+    
+    /// Get focus minutes today for premium clock display
+    func getFocusMinutesToday() -> Int {
+        return todaysFocusTime
+    }
 }

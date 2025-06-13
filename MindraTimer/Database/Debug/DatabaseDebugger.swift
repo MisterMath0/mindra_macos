@@ -19,7 +19,7 @@ class DatabaseDebugger {
         var info = "📊 Database Debug Information:\n\n"
         
         // Database file info
-        if let dbPointer = connection.getDatabasePointer() {
+        if connection.getDatabasePointer() != nil {
             info += "✅ Database Connection: Active\n"
         } else {
             info += "❌ Database Connection: Inactive\n"

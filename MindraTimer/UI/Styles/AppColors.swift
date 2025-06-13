@@ -62,6 +62,7 @@ struct AppColors {
     
     // MARK: - UI Element Colors
     
+    static let accent = focusColor  // Main accent color
     static let dividerColor = Color.white.opacity(0.1)
     static let borderColor = Color.white.opacity(0.15)
     static let shadowColor = Color.black.opacity(0.3)

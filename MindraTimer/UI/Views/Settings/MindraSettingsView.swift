@@ -2,7 +2,8 @@
 //  MindraSettingsView.swift
 //  MindraTimer
 //
-//  Refactored version with improved architecture and component separation
+//  SETTINGS AS FULL PAGE - PROPER NAVIGATION INTEGRATION
+//  No more dialog - integrated as main page like clock/focus
 //
 
 import SwiftUI
@@ -36,7 +37,6 @@ class SettingsCoordinator: ObservableObject {
     }
     
     func syncWithStatsManager(_ statsManager: StatsManager) {
-        // Sync coordinator with stats manager
         autoStartTimer = statsManager.settings.autoStartTimer
         soundEnabled = statsManager.settings.soundEnabled
         showNotifications = statsManager.settings.showNotifications
@@ -75,10 +75,7 @@ class SettingsCoordinator: ObservableObject {
         statsManager.settings.soundEnabled = value
     }
     
-    func updateShowNotifications(_ value: Bool, statsManager: StatsManager) {
-        showNotifications = value
-        statsManager.settings.showNotifications = value
-    }
+
     
     func updateShowGreetings(_ value: Bool, statsManager: StatsManager) {
         showGreetings = value
@@ -115,27 +112,14 @@ class SettingsCoordinator: ObservableObject {
         showStatsNotifications = value
         statsManager.settingsManager.showNotifications = value
     }
-}
-
-// MARK: - Custom Styles
-
-struct ModernTextFieldStyle: TextFieldStyle {
-    func _body(configuration: TextField<Self._Label>) -> some View {
-        configuration
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(AppColors.cardBackground)
-                    .stroke(AppColors.dividerColor, lineWidth: 1)
-            )
-            .foregroundColor(AppColors.primaryText)
-            .font(.system(size: 14, weight: .medium, design: .rounded))
+    
+    func updateShowNotifications(_ value: Bool, statsManager: StatsManager) {
+        showNotifications = value
+        statsManager.settings.showNotifications = value
     }
 }
 
-// MARK: - Main Settings Container
-// Note: Button styles are now imported from UI/Styles/ButtonStyles.swift
+// MARK: - MAIN SETTINGS VIEW - FULL PAGE LAYOUT
 
 struct MindraSettingsView: View {
     @EnvironmentObject var statsManager: StatsManager
@@ -144,34 +128,43 @@ struct MindraSettingsView: View {
     @EnvironmentObject var appModeManager: AppModeManager
     @EnvironmentObject var quotesManager: QuotesManager
     @EnvironmentObject var greetingManager: GreetingManager
+    @EnvironmentObject var navigationManager: AppNavigationManager
     
-    @Environment(\.dismiss) private var dismiss
     @StateObject private var coordinator = SettingsCoordinator()
     
     var body: some View {
         GeometryReader { geometry in
-            HStack(spacing: 0) {
-                SettingsSidebar(
-                    selectedSection: $coordinator.selectedSection,
-                    onDismiss: { dismiss() },
-                    geometry: geometry
-                )
+            VStack(spacing: 0) {
+                // FULL PAGE SETTINGS LAYOUT
+                HStack(spacing: 0) {
+                    // SIDEBAR
+                    SettingsSidebar(
+                        selectedSection: $coordinator.selectedSection,
+                        geometry: geometry
+                    )
+                    
+                    // MAIN CONTENT
+                    SettingsDetailView(
+                        selectedSection: coordinator.selectedSection,
+                        coordinator: coordinator,
+                        geometry: geometry
+                    )
+                    .environmentObject(statsManager)
+                    .environmentObject(timerManager)
+                    .environmentObject(windowManager)
+                    .environmentObject(appModeManager)
+                    .environmentObject(quotesManager)
+                    .environmentObject(greetingManager)
+                }
                 
-                SettingsDetailView(
-                    selectedSection: coordinator.selectedSection,
-                    coordinator: coordinator,
-                    geometry: geometry
-                )
-                .environmentObject(statsManager)
-                .environmentObject(timerManager)
-                .environmentObject(windowManager)
-                .environmentObject(appModeManager)
-                .environmentObject(quotesManager)
-                .environmentObject(greetingManager)
+                // BOTTOM NAVIGATION - INTEGRATED LIKE OTHER PAGES
+                SettingsBottomNavigation(geometry: geometry)
+                    .environmentObject(navigationManager)
+                    .environmentObject(windowManager)
+                    .environmentObject(timerManager)
             }
             .background(AppColors.primaryBackground)
         }
-        .frame(width: 900, height: 650)
         .onAppear {
             coordinator.loadInitialValues()
             coordinator.syncWithStatsManager(statsManager)
@@ -187,11 +180,109 @@ struct MindraSettingsView: View {
     }
 }
 
-// MARK: - Settings Sidebar
+// MARK: - SETTINGS BOTTOM NAVIGATION
+
+struct SettingsBottomNavigation: View {
+    let geometry: GeometryProxy
+    @EnvironmentObject var navigationManager: AppNavigationManager
+    @EnvironmentObject var windowManager: WindowManager
+    @EnvironmentObject var timerManager: TimerManager
+    
+    var body: some View {
+        HStack {
+            // Left side controls
+            HStack(spacing: max(20, geometry.size.width * 0.025)) {
+                navButton(icon: "bell", action: { }, geometry: geometry)
+            }
+            .frame(width: max(60, geometry.size.width * 0.08), alignment: .leading)
+            
+            Spacer()
+            
+            // Center navigation
+            HStack(spacing: max(32, geometry.size.width * 0.04)) {
+                navButton(
+                    icon: "house.fill",
+                    action: { 
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                            navigationManager.navigateTo(.clock)
+                        }
+                    },
+                    geometry: geometry,
+                    isActive: false
+                )
+                navButton(
+                    icon: "timer",
+                    action: { 
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                            navigationManager.navigateTo(.focus)
+                        }
+                    },
+                    geometry: geometry,
+                    isActive: false
+                )
+            }
+            .frame(maxWidth: .infinity)
+            
+            Spacer()
+            
+            // Right side controls
+            HStack(spacing: max(16, geometry.size.width * 0.02)) {
+                navButton(
+                    icon: "rectangle.compress.vertical", 
+                    action: { 
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            windowManager.toggleCompactMode()
+                        }
+                    }, 
+                    geometry: geometry
+                )
+                navButton(
+                    icon: windowManager.isAlwaysOnTop ? "pin.fill" : "pin", 
+                    action: { 
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            windowManager.toggleAlwaysOnTop()
+                        }
+                    }, 
+                    geometry: geometry, 
+                    isActive: windowManager.isAlwaysOnTop
+                )
+                navButton(
+                    icon: "gearshape", 
+                    action: { }, // Already in settings
+                    geometry: geometry,
+                    isActive: true
+                )
+            }
+            .frame(width: max(120, geometry.size.width * 0.15), alignment: .trailing)
+        }
+        .padding(.horizontal, max(40, geometry.size.width * 0.05))
+        .padding(.bottom, max(32, geometry.size.height * 0.04))
+    }
+    
+    private func navButton(icon: String, action: @escaping () -> Void, geometry: GeometryProxy, isActive: Bool = false) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: max(18, geometry.size.width * 0.02), weight: .medium))
+                .foregroundColor(isActive ? timerManager.currentMode.color : .white.opacity(0.6))
+                .frame(
+                    width: max(44, geometry.size.width * 0.045),
+                    height: max(44, geometry.size.width * 0.045)
+                )
+                .background(
+                    Circle()
+                        .fill(isActive ? timerManager.currentMode.color.opacity(0.15) : Color.clear)
+                )
+                .scaleEffect(isActive ? 1.05 : 1.0)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isActive)
+    }
+}
+
+// MARK: - Settings Sidebar - NO DISMISS BUTTON
 
 struct SettingsSidebar: View {
     @Binding var selectedSection: SettingsSection
-    let onDismiss: () -> Void
     let geometry: GeometryProxy
     
     private let sectionGroups: [(String, [(SettingsSection, String, String)])] = [
@@ -214,8 +305,21 @@ struct SettingsSidebar: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SettingsSidebarHeader(onDismiss: onDismiss)
+            // HEADER - NO DISMISS BUTTON
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Settings")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(AppColors.primaryText)
+                
+                Text("Customize your experience")
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundColor(AppColors.secondaryText)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 32)
+            .padding(.bottom, 32)
             
+            // SECTIONS
             VStack(alignment: .leading, spacing: 24) {
                 ForEach(sectionGroups, id: \.0) { group in
                     SettingsSectionGroup(
@@ -229,40 +333,24 @@ struct SettingsSidebar: View {
             
             Spacer()
             
-            SettingsSidebarFooter()
+            // FOOTER
+            VStack(spacing: 4) {
+                Text("MindraTimer")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(AppColors.primaryText)
+                Text("Version 1.0.0")
+                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                    .foregroundColor(AppColors.tertiaryText)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
         }
-        .frame(width: geometry.size.width * 0.3)
+        .frame(width: max(280, geometry.size.width * 0.28))
         .background(AppColors.sidebarBackground)
     }
 }
 
-// MARK: - Sidebar Components
-
-struct SettingsSidebarHeader: View {
-    let onDismiss: () -> Void
-    
-    var body: some View {
-        HStack {
-            Button(action: onDismiss) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(AppColors.secondaryText)
-                    .frame(width: 32, height: 32) // Larger hit area
-                    .contentShape(Rectangle()) // Make entire frame clickable
-            }
-            .buttonStyle(PlainButtonStyle())
-            .help("Close Settings") // Tooltip for better UX
-            
-            Text("Settings")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundColor(AppColors.primaryText)
-            Spacer()
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 24)
-        .padding(.bottom, 32)
-    }
-}
+// MARK: - Sidebar Components (Unchanged)
 
 struct SettingsSectionGroup: View {
     let title: String
@@ -313,238 +401,19 @@ struct SettingsSidebarItem: View {
                 Spacer()
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12) // Increased padding for better hit area
-            .contentShape(Rectangle()) // Make entire area clickable
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(isSelected ? AppColors.selectedBackground : Color.clear)
             )
         }
         .buttonStyle(PlainButtonStyle())
-        .animation(.easeInOut(duration: 0.2), value: isSelected) // Smooth selection animation
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
     }
 }
 
-struct SettingsSidebarFooter: View {
-    var body: some View {
-        VStack(spacing: 4) {
-            Text("MindraTimer")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundColor(AppColors.primaryText)
-            Text("Version 1.0.0")
-                .font(.system(size: 12, weight: .regular, design: .rounded))
-                .foregroundColor(AppColors.tertiaryText)
-        }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 24)
-    }
-}
-
-// MARK: - Layout Components
-
-struct SettingsScrollContainer<Content: View>: View {
-    @ViewBuilder let content: Content
-    
-    var body: some View {
-        ScrollView {
-            content
-                .padding(.all, 40)
-        }
-    }
-}
-
-struct SettingsContentSection<Content: View>: View {
-    let title: String
-    let subtitle: String?
-    @ViewBuilder let content: Content
-    
-    init(title: String, subtitle: String? = nil, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.subtitle = subtitle
-        self.content = content()
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 32) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(AppColors.primaryText)
-                
-                if let subtitle = subtitle {
-                    Text(subtitle)
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
-                        .foregroundColor(AppColors.secondaryText)
-                }
-            }
-            
-            VStack(alignment: .leading, spacing: 24) {
-                content
-            }
-            
-            Spacer(minLength: 200)
-        }
-    }
-}
-
-struct SettingsCard<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: Content
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(title)
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundColor(AppColors.primaryText)
-            
-            content
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(AppColors.cardBackground)
-        )
-    }
-}
-
-// MARK: - Form Components
-
-struct SettingsToggle: View {
-    let title: String
-    @Binding var isOn: Bool
-    
-    var body: some View {
-        Button(action: {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isOn.toggle()
-            }
-        }) {
-            HStack {
-                Text(title)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
-                    .foregroundColor(AppColors.primaryText)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                
-                // Custom toggle - smaller visual size, same touch area
-                ZStack {
-                    // Invisible touch area
-                    Rectangle()
-                        .fill(Color.clear)
-                        .frame(width: 44, height: 44) // Keep large touch target
-                    
-                    // Visual toggle - smaller
-                    ZStack {
-                        Capsule()
-                            .fill(isOn ? AppColors.focusColor : Color.gray.opacity(0.3))
-                            .frame(width: 42, height: 24) // Reduced from 51x31
-                        
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 20, height: 20) // Reduced from 27x27
-                            .offset(x: isOn ? 9 : -9) // Adjusted for smaller size
-                            .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
-                    }
-                    .animation(.easeInOut(duration: 0.2), value: isOn)
-                }
-            }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 4)
-            .contentShape(Rectangle()) // Make entire row clickable
-        }
-        .buttonStyle(PlainButtonStyle())
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.clear)
-                .contentShape(Rectangle())
-        )
-        .onHover { hovering in
-            // Optional: Add hover effect
-        }
-    }
-}
-
-struct DurationSettingRow: View {
-    let title: String
-    let value: Int
-    let onValueChanged: (Int) -> Void
-    
-    var body: some View {
-        HStack {
-            Text(title)
-                .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundColor(AppColors.primaryText)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            HStack(spacing: 16) {
-                Button(action: {
-                    let newValue = max(1, value - 1)
-                    onValueChanged(newValue)
-                }) {
-                    ZStack {
-                        // Invisible large touch area
-                        Rectangle()
-                            .fill(Color.clear)
-                            .frame(width: 44, height: 44) // Keep large touch target
-                        
-                        // Smaller visual button
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(AppColors.focusColor.opacity(0.1))
-                            .frame(width: 32, height: 32) // Reduced visual size
-                            .overlay(
-                                Image(systemName: "minus")
-                                    .font(.system(size: 14, weight: .semibold)) // Slightly smaller icon
-                                    .foregroundColor(AppColors.focusColor)
-                            )
-                    }
-                    .contentShape(Rectangle()) // Make entire area clickable
-                }
-                .buttonStyle(PlainButtonStyle())
-                .help("Decrease duration")
-                
-                Text("\(value) min")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundColor(AppColors.primaryText)
-                    .frame(minWidth: 60)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(AppColors.cardBackground)
-                            .stroke(AppColors.dividerColor, lineWidth: 1)
-                    )
-                
-                Button(action: {
-                    let newValue = value + 1
-                    onValueChanged(newValue)
-                }) {
-                    ZStack {
-                        // Invisible large touch area
-                        Rectangle()
-                            .fill(Color.clear)
-                            .frame(width: 44, height: 44) // Keep large touch target
-                        
-                        // Smaller visual button
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(AppColors.focusColor.opacity(0.1))
-                            .frame(width: 32, height: 32) // Reduced visual size
-                            .overlay(
-                                Image(systemName: "plus")
-                                    .font(.system(size: 14, weight: .semibold)) // Slightly smaller icon
-                                    .foregroundColor(AppColors.focusColor)
-                            )
-                    }
-                    .contentShape(Rectangle()) // Make entire area clickable
-                }
-                .buttonStyle(PlainButtonStyle())
-                .help("Increase duration")
-            }
-        }
-        .padding(.vertical, 8)
-    }
-}
-
-// MARK: - Settings Detail View
+// MARK: - Settings Detail View (Unchanged)
 
 struct SettingsDetailView: View {
     let selectedSection: SettingsSection
@@ -615,11 +484,64 @@ enum SettingsSection: CaseIterable {
     }
 }
 
+// MARK: - Placeholder Views
+
+struct PlaceholderSettingsView: View {
+    let title: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 32) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(AppColors.primaryText)
+                
+                Text("Coming soon...")
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundColor(AppColors.secondaryText)
+            }
+            
+            Spacer()
+        }
+        .padding(.all, 40)
+    }
+}
+
+struct AboutSettingsView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 32) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("About")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(AppColors.primaryText)
+                
+                Text("MindraTimer - Your Focus Companion")
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundColor(AppColors.secondaryText)
+            }
+            
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Version 1.0.0")
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(AppColors.primaryText)
+                
+                Text("Built with SwiftUI for macOS")
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundColor(AppColors.secondaryText)
+            }
+            
+            Spacer()
+        }
+        .padding(.all, 40)
+    }
+}
+
 // MARK: - Preview
 
 #Preview {
     MindraSettingsView()
         .environmentObject(WindowManager())
+        .environmentObject(AppNavigationManager())
         .environmentObject(StatsManager())
         .environmentObject(TimerManager())
         .environmentObject(AppModeManager())

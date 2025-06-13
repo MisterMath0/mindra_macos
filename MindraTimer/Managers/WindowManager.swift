@@ -2,7 +2,8 @@
 //  WindowManager.swift
 //  MindraTimer
 //
-//  Created by Guy Mathieu Foko on 09.06.25.
+//  🎨 FIXED WINDOW MANAGEMENT - PROPER SCALING RESTORED
+//  Better default sizes, proper settings display
 //
 
 import SwiftUI
@@ -92,22 +93,22 @@ class WindowManager: ObservableObject {
             window.standardWindowButton(.miniaturizeButton)?.isHidden = true
             window.standardWindowButton(.zoomButton)?.isHidden = true
             
-            // Make it resizable with proper size constraints
+            // 📱 COMPACT CONSTRAINTS
             window.styleMask = [.resizable, .fullSizeContentView]
             window.minSize = NSSize(width: 320, height: 200)
-            window.maxSize = NSSize(width: 480, height: 320)
+            window.maxSize = NSSize(width: 600, height: 400)
             
-            // Hide title bar completely
+            // Clean PiP appearance
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             
-            // Set initial compact size
-            let newSize = NSSize(width: 360, height: 240)
+            // OPTIMAL COMPACT SIZE
+            let newSize = NSSize(width: 400, height: 250)
             window.setContentSize(newSize)
             
-            // Add rounded corners
+            // ROUNDED CORNERS
             window.contentView?.wantsLayer = true
-            window.contentView?.layer?.cornerRadius = 18
+            window.contentView?.layer?.cornerRadius = 20
             window.contentView?.layer?.masksToBounds = true
             
             // Make window background transparent
@@ -115,7 +116,7 @@ class WindowManager: ObservableObject {
             window.backgroundColor = .clear
             
         } else {
-            // Full mode: Premium sizing with responsive behavior
+            // Full mode: Restore to better proportions
             window.level = isAlwaysOnTop ? .floating : .normal
             
             // Show native window controls
@@ -126,7 +127,7 @@ class WindowManager: ObservableObject {
             // Full window styling
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             
-            // PREMIUM SIZING: Responsive to screen size
+            // BETTER SIZING - More reasonable for the content
             let screenSize = getOptimalWindowSize()
             window.minSize = NSSize(width: screenSize.minWidth, height: screenSize.minHeight)
             window.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
@@ -135,7 +136,7 @@ class WindowManager: ObservableObject {
             window.titleVisibility = .visible
             window.titlebarAppearsTransparent = true
             
-            // Set premium default size
+            // Set good default size
             let newSize = NSSize(width: screenSize.defaultWidth, height: screenSize.defaultHeight)
             window.setContentSize(newSize)
             
@@ -155,54 +156,63 @@ class WindowManager: ObservableObject {
         centerWindowOnScreen()
     }
     
-    // MARK: - Premium Sizing Logic
+    // MARK: - 🎯 BETTER RESPONSIVE SIZING LOGIC
     
     private func getOptimalWindowSize() -> (defaultWidth: CGFloat, defaultHeight: CGFloat, minWidth: CGFloat, minHeight: CGFloat) {
         guard let screen = NSScreen.main else {
-            // Fallback sizes
-            return (defaultWidth: 1400, defaultHeight: 900, minWidth: 1000, minHeight: 650)
+            // Conservative fallback
+            return (defaultWidth: 1200, defaultHeight: 800, minWidth: 1000, minHeight: 700)
         }
         
         let screenSize = screen.visibleFrame.size
+        print("🖥️ Detected screen: \(screenSize.width) x \(screenSize.height)")
         
-        // Calculate optimal sizes based on screen dimensions
+        // BETTER SIZING - More reasonable proportions
         let defaultWidth: CGFloat
         let defaultHeight: CGFloat
         let minWidth: CGFloat
         let minHeight: CGFloat
         
-        if screenSize.width >= 2560 { // 4K+ displays
-            defaultWidth = 1600
-            defaultHeight = 1000
-            minWidth = 1200
-            minHeight = 750
-        } else if screenSize.width >= 1920 { // 1080p+ displays
+        if screenSize.width >= 3000 { // 4K+ Ultra-wide displays
             defaultWidth = 1400
             defaultHeight = 900
-            minWidth = 1000
-            minHeight = 650
-        } else if screenSize.width >= 1440 { // Smaller displays
+            minWidth = 1200
+            minHeight = 800
+        } else if screenSize.width >= 2560 { // 4K displays
+            defaultWidth = 1300
+            defaultHeight = 850
+            minWidth = 1100
+            minHeight = 750
+        } else if screenSize.width >= 1920 { // 1080p+ displays
             defaultWidth = 1200
             defaultHeight = 800
-            minWidth = 900
-            minHeight = 600
-        } else { // Very small displays
+            minWidth = 1000
+            minHeight = 700
+        } else if screenSize.width >= 1440 { // MacBook displays
+            defaultWidth = 1100
+            defaultHeight = 750
+            minWidth = 950
+            minHeight = 650
+        } else { // Smaller displays
             defaultWidth = 1000
             defaultHeight = 700
-            minWidth = 800
-            minHeight = 550
+            minWidth = 900
+            minHeight = 600
         }
         
-        // Ensure we don't exceed 80% of screen size
-        let maxAllowedWidth = screenSize.width * 0.8
-        let maxAllowedHeight = screenSize.height * 0.8
+        // Ensure reasonable screen utilization (65% max)
+        let maxAllowedWidth = screenSize.width * 0.65
+        let maxAllowedHeight = screenSize.height * 0.65
         
-        return (
+        let finalSizing = (
             defaultWidth: min(defaultWidth, maxAllowedWidth),
             defaultHeight: min(defaultHeight, maxAllowedHeight),
             minWidth: min(minWidth, maxAllowedWidth * 0.7),
             minHeight: min(minHeight, maxAllowedHeight * 0.7)
         )
+        
+        print("🎯 Selected sizing: \(finalSizing.defaultWidth) x \(finalSizing.defaultHeight)")
+        return finalSizing
     }
     
     private func centerWindowOnScreen() {

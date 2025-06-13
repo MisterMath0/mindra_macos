@@ -15,180 +15,189 @@ struct SoundSettingsView: View {
     @State private var showSoundPreview = false
     
     var body: some View {
-        SettingsScrollContainer {
-            SettingsContentSection(
-                title: "Sound & Notifications",
-                subtitle: "Customize your audio experience and notification preferences"
-            ) {
-                VStack(spacing: 24) {
-                    // Core Audio Settings
-                    VStack(spacing: 16) {
-                        SectionHeader(
-                            title: "Audio Settings",
-                            subtitle: "Control sounds and notification preferences",
-                            icon: "speaker.wave.3",
-                            color: AppColors.infoColor
+        VStack(alignment: .leading, spacing: 32) {
+            // Header
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Sound & Notifications")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(AppColors.primaryText)
+                
+                Text("Customize your audio experience and notification preferences")
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundColor(AppColors.secondaryText)
+            }
+            
+            VStack(spacing: 24) {
+                // Core Audio Settings
+                VStack(spacing: 16) {
+                    SectionHeader(
+                        title: "Audio Settings",
+                        subtitle: "Control sounds and notification preferences",
+                        icon: "speaker.wave.3",
+                        color: AppColors.infoColor
+                    )
+                    
+                    VStack(spacing: 12) {
+                        ModernToggleCard(
+                            title: "Enable Sound Notifications",
+                            subtitle: "Audio alerts when timers complete",
+                            icon: "speaker.wave.3.fill",
+                            color: AppColors.infoColor,
+                            isOn: Binding(
+                                get: { coordinator.soundEnabled },
+                                set: { coordinator.updateSoundEnabled($0, statsManager: statsManager) }
+                            ),
+                            description: "Play gentle, non-disruptive sounds when focus sessions and breaks complete to keep you informed without breaking concentration."
                         )
                         
-                        VStack(spacing: 12) {
-                            ModernToggleCard(
-                                title: "Enable Sound Notifications",
-                                subtitle: "Audio alerts when timers complete",
-                                icon: "speaker.wave.3.fill",
-                                color: AppColors.infoColor,
-                                isOn: Binding(
-                                    get: { coordinator.soundEnabled },
-                                    set: { coordinator.updateSoundEnabled($0, statsManager: statsManager) }
-                                ),
-                                description: "Play gentle, non-disruptive sounds when focus sessions and breaks complete to keep you informed without breaking concentration."
-                            )
-                            
-                            ModernToggleCard(
-                                title: "System Notifications",
-                                subtitle: "Show macOS notification banners",
-                                icon: "bell.fill",
-                                color: AppColors.warningColor,
-                                isOn: Binding(
-                                    get: { coordinator.showNotifications },
-                                    set: { coordinator.updateShowNotifications($0, statsManager: statsManager) }
-                                ),
-                                description: "Display notification banners in macOS when timers complete, including session summaries and motivational messages."
-                            )
+                        ModernToggleCard(
+                            title: "System Notifications",
+                            subtitle: "Show macOS notification banners",
+                            icon: "bell.fill",
+                            color: AppColors.warningColor,
+                            isOn: Binding(
+                                get: { coordinator.showNotifications },
+                                set: { coordinator.updateShowNotifications($0, statsManager: statsManager) }
+                            ),
+                            description: "Display notification banners in macOS when timers complete, including session summaries and motivational messages."
+                        )
+                    }
+                }
+                
+                // Volume Control (only shown when sound is enabled)
+                if coordinator.soundEnabled {
+                    VStack(spacing: 16) {
+                        SectionHeader(
+                            title: "Volume Control",
+                            subtitle: "Fine-tune your notification audio levels",
+                            icon: "speaker.2",
+                            color: AppColors.focusColor
+                        )
+                        
+                        ModernVolumeSlider(
+                            title: "Notification Volume",
+                            volume: $coordinator.soundVolume,
+                            color: AppColors.focusColor
+                        ) { newValue in
+                            coordinator.updateSoundVolume(newValue)
+                            statsManager.setSoundVolume(newValue)
                         }
                     }
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.95).combined(with: .opacity),
+                        removal: .scale(scale: 1.05).combined(with: .opacity)
+                    ))
+                }
+                
+                // Sound Selection
+                if coordinator.soundEnabled {
+                    VStack(spacing: 16) {
+                        SectionHeader(
+                            title: "Sound Selection",
+                            subtitle: "Choose your preferred notification sound",
+                            icon: "music.note",
+                            color: AppColors.shortBreakColor
+                        )
+                        
+                        ModernSoundPicker(
+                            selectedSound: Binding(
+                                get: { statsManager.settings.selectedSound.rawValue },
+                                set: { newValue in
+                                    statsManager.setSelectedSound(newValue)
+                                }
+                            ),
+                            volume: coordinator.soundVolume,
+                            showPreview: $showSoundPreview
+                        )
+                    }
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.95).combined(with: .opacity),
+                        removal: .scale(scale: 1.05).combined(with: .opacity)
+                    ))
+                }
+                
+                // Menu Bar Settings
+                VStack(spacing: 16) {
+                    SectionHeader(
+                        title: "Menu Bar Integration",
+                        subtitle: "Control what appears in your menu bar",
+                        icon: "menubar.rectangle",
+                        color: AppColors.successColor
+                    )
                     
-                    // Volume Control (only shown when sound is enabled)
-                    if coordinator.soundEnabled {
+                    VStack(spacing: 12) {
+                        ModernToggleCard(
+                            title: "Show Timer in Menu Bar",
+                            subtitle: "Display countdown in menu bar",
+                            icon: "timer",
+                            color: AppColors.successColor,
+                            isOn: Binding(
+                                get: { coordinator.showTimerInMenuBar },
+                                set: { coordinator.updateShowTimerInMenuBar($0, statsManager: statsManager) }
+                            ),
+                            description: "Keep track of your current session without switching apps. Shows remaining time and session type."
+                        )
+                        
+                        ModernToggleCard(
+                            title: "Menu Bar Notifications",
+                            subtitle: "Show alerts in menu bar area",
+                            icon: "bell.badge",
+                            color: AppColors.longBreakColor,
+                            isOn: Binding(
+                                get: { coordinator.showNotificationsInMenuBar },
+                                set: { coordinator.updateShowNotificationsInMenuBar($0, statsManager: statsManager) }
+                            ),
+                            description: "Display notification badges and alerts in the menu bar for quick access to session updates."
+                        )
+                    }
+                }
+                
+                // Audio Tips Section
+                VStack(spacing: 16) {
+                    SectionHeader(
+                        title: "Audio Tips",
+                        subtitle: "Optimize your audio experience",
+                        icon: "lightbulb.fill",
+                        color: AppColors.warningColor
+                    )
+                    
+                    TitledCard(
+                        "Sound Optimization",
+                        subtitle: "Best practices for productive audio"
+                    ) {
                         VStack(spacing: 16) {
-                            SectionHeader(
-                                title: "Volume Control",
-                                subtitle: "Fine-tune your notification audio levels",
+                            AudioTipRow(
                                 icon: "speaker.2",
-                                color: AppColors.focusColor
+                                title: "Keep volume moderate (30-70%)",
+                                description: "Audible without being jarring or disruptive",
+                                color: AppColors.focusColor,
+                                isOptimal: coordinator.soundVolume >= 30 && coordinator.soundVolume <= 70
                             )
                             
-                            ModernVolumeSlider(
-                                title: "Notification Volume",
-                                volume: $coordinator.soundVolume,
-                                color: AppColors.focusColor
-                            ) { newValue in
-                                coordinator.updateSoundVolume(newValue)
-                                statsManager.setSoundVolume(newValue)
-                            }
-                        }
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.95).combined(with: .opacity),
-                            removal: .scale(scale: 1.05).combined(with: .opacity)
-                        ))
-                    }
-                    
-                    // Sound Selection
-                    if coordinator.soundEnabled {
-                        VStack(spacing: 16) {
-                            SectionHeader(
-                                title: "Sound Selection",
-                                subtitle: "Choose your preferred notification sound",
-                                icon: "music.note",
-                                color: AppColors.shortBreakColor
-                            )
-                            
-                            ModernSoundPicker(
-                                selectedSound: Binding(
-                                    get: { statsManager.settings.selectedSound.rawValue },
-                                    set: { newValue in
-                                        statsManager.setSelectedSound(newValue)
-                                    }
-                                ),
-                                volume: coordinator.soundVolume,
-                                showPreview: $showSoundPreview
-                            )
-                        }
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.95).combined(with: .opacity),
-                            removal: .scale(scale: 1.05).combined(with: .opacity)
-                        ))
-                    }
-                    
-                    // Menu Bar Settings
-                    VStack(spacing: 16) {
-                        SectionHeader(
-                            title: "Menu Bar Integration",
-                            subtitle: "Control what appears in your menu bar",
-                            icon: "menubar.rectangle",
-                            color: AppColors.successColor
-                        )
-                        
-                        VStack(spacing: 12) {
-                            ModernToggleCard(
-                                title: "Show Timer in Menu Bar",
-                                subtitle: "Display countdown in menu bar",
-                                icon: "timer",
-                                color: AppColors.successColor,
-                                isOn: Binding(
-                                    get: { coordinator.showTimerInMenuBar },
-                                    set: { coordinator.updateShowTimerInMenuBar($0, statsManager: statsManager) }
-                                ),
-                                description: "Keep track of your current session without switching apps. Shows remaining time and session type."
-                            )
-                            
-                            ModernToggleCard(
-                                title: "Menu Bar Notifications",
-                                subtitle: "Show alerts in menu bar area",
+                            AudioTipRow(
                                 icon: "bell.badge",
-                                color: AppColors.longBreakColor,
-                                isOn: Binding(
-                                    get: { coordinator.showNotificationsInMenuBar },
-                                    set: { coordinator.updateShowNotificationsInMenuBar($0, statsManager: statsManager) }
-                                ),
-                                description: "Display notification badges and alerts in the menu bar for quick access to session updates."
+                                title: "Enable both sound and notifications",
+                                description: "Dual alerts ensure you never miss a session end",
+                                color: AppColors.infoColor,
+                                isOptimal: coordinator.soundEnabled && coordinator.showNotifications
                             )
-                        }
-                    }
-                    
-                    // Audio Tips Section
-                    VStack(spacing: 16) {
-                        SectionHeader(
-                            title: "Audio Tips",
-                            subtitle: "Optimize your audio experience",
-                            icon: "lightbulb.fill",
-                            color: AppColors.warningColor
-                        )
-                        
-                        TitledCard(
-                            "Sound Optimization",
-                            subtitle: "Best practices for productive audio"
-                        ) {
-                            VStack(spacing: 16) {
-                                AudioTipRow(
-                                    icon: "speaker.2",
-                                    title: "Keep volume moderate (30-70%)",
-                                    description: "Audible without being jarring or disruptive",
-                                    color: AppColors.focusColor,
-                                    isOptimal: coordinator.soundVolume >= 30 && coordinator.soundVolume <= 70
-                                )
-                                
-                                AudioTipRow(
-                                    icon: "bell.badge",
-                                    title: "Enable both sound and notifications",
-                                    description: "Dual alerts ensure you never miss a session end",
-                                    color: AppColors.infoColor,
-                                    isOptimal: coordinator.soundEnabled && coordinator.showNotifications
-                                )
-                                
-                                AudioTipRow(
-                                    icon: "menubar.rectangle",
-                                    title: "Use menu bar timer for awareness",
-                                    description: "Stay focused while keeping track of time",
-                                    color: AppColors.successColor,
-                                    isOptimal: coordinator.showTimerInMenuBar
-                                )
-                            }
+                            
+                            AudioTipRow(
+                                icon: "menubar.rectangle",
+                                title: "Use menu bar timer for awareness",
+                                description: "Stay focused while keeping track of time",
+                                color: AppColors.successColor,
+                                isOptimal: coordinator.showTimerInMenuBar
+                            )
                         }
                     }
                 }
             }
+            
+            Spacer()
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: coordinator.soundEnabled)
+        .padding(.all, 40)
+        .animation(Animation.spring(response: 0.4, dampingFraction: 0.8), value: coordinator.soundEnabled)
     }
 }
 
@@ -270,7 +279,7 @@ struct ModernSoundPicker: View {
     }
     
     private func playPreview() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(Animation.spring(response: 0.3, dampingFraction: 0.7)) {
             isPlayingPreview = true
         }
         
@@ -278,7 +287,7 @@ struct ModernSoundPicker: View {
         // AudioManager.shared.playSound(selectedSound, volume: volume)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(Animation.spring(response: 0.3, dampingFraction: 0.7)) {
                 isPlayingPreview = false
             }
         }
@@ -359,15 +368,15 @@ struct SoundOptionCard: View {
             .scaleEffect(isPressed ? 0.95 : 1.0)
         }
         .buttonStyle(PlainButtonStyle())
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
-        .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isPressed)
+        .animation(Animation.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        .animation(Animation.spring(response: 0.2, dampingFraction: 0.8), value: isPressed)
         .onTapGesture {
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+            withAnimation(Animation.spring(response: 0.2, dampingFraction: 0.8)) {
                 isPressed = true
             }
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+                withAnimation(Animation.spring(response: 0.2, dampingFraction: 0.8)) {
                     isPressed = false
                 }
             }
@@ -395,7 +404,7 @@ struct AudioTipRow: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(isOptimal ? .white : AppColors.tertiaryText)
             }
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isOptimal)
+            .animation(Animation.spring(response: 0.3, dampingFraction: 0.7), value: isOptimal)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
