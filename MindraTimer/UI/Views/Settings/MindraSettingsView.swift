@@ -522,7 +522,7 @@ struct AboutSettingsView: View {
             }
             
             VStack(alignment: .leading, spacing: 16) {
-                Text("Version 1.0.0")
+                Text("Version 1.0.1")
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(AppColors.primaryText)
                 
