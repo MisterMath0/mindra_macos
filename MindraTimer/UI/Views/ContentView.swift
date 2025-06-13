@@ -295,88 +295,88 @@ struct ContentView: View {
     
 
     private func clockDisplay(geometry: GeometryProxy) -> some View {
-        VStack(spacing: max(16, geometry.size.height * 0.02)) {
-            // Current time with BLACK weight - LARGER
+        VStack(spacing: max(20, geometry.size.height * 0.025)) {
+            // Current time with BLACK weight - LARGER and more responsive
             Text(getCurrentTime())
-                .font(.system(size: max(120, geometry.size.width * 0.15), weight: .black, design: .rounded))
+                .font(.system(size: max(140, min(geometry.size.width * 0.18, 280)), weight: .black, design: .rounded))
                 .foregroundColor(.white)
-                .tracking(3)
+                .tracking(max(3, geometry.size.width * 0.004))
                 .animation(.easeInOut(duration: 0.3), value: getCurrentTime())
             
-            // Date info
+            // Date info - larger and better spaced
             Text(getCurrentDate())
-                .font(.system(size: max(18, geometry.size.width * 0.022), weight: .medium, design: .rounded))
+                .font(.system(size: max(22, geometry.size.width * 0.028), weight: .medium, design: .rounded))
                 .foregroundColor(.white.opacity(0.6))
-                .tracking(0.5)
+                .tracking(max(0.8, geometry.size.width * 0.001))
                 .animation(.easeInOut(duration: 0.3), value: getCurrentDate())
             
-            // Time zone or additional info
+            // Time zone or additional info - subtle but readable
             Text(getTimeZoneInfo())
-                .font(.system(size: max(14, geometry.size.width * 0.016), weight: .regular, design: .rounded))
+                .font(.system(size: max(16, geometry.size.width * 0.018), weight: .regular, design: .rounded))
                 .foregroundColor(.white.opacity(0.4))
-                .tracking(0.5)
+                .tracking(max(0.6, geometry.size.width * 0.0008))
         }
     }
     
     private func pomodoroDisplay(geometry: GeometryProxy) -> some View {
-        VStack(spacing: max(24, geometry.size.height * 0.03)) {
-            // Current mode label
+        VStack(spacing: max(28, geometry.size.height * 0.035)) {
+            // Current mode label - larger and more prominent
             Text(timerManager.currentMode.displayName)
-                .font(.system(size: max(12, geometry.size.width * 0.014), weight: .semibold, design: .rounded))
+                .font(.system(size: max(14, geometry.size.width * 0.016), weight: .semibold, design: .rounded))
                 .foregroundColor(.white.opacity(0.6))
-                .tracking(1.5)
+                .tracking(max(1.8, geometry.size.width * 0.002))
                 .animation(.easeInOut(duration: 0.3), value: timerManager.currentMode)
             
-            // Timer display with enhanced progress ring
+            // Timer display with enhanced progress ring - responsive sizing
             ZStack {
-                // Background circle
+                // Background circle - larger and more prominent
                 Circle()
-                    .stroke(Color.white.opacity(0.05), lineWidth: 3)
-                    .frame(width: max(120, geometry.size.width * 0.15))
+                    .stroke(Color.white.opacity(0.05), lineWidth: max(3, geometry.size.width * 0.004))
+                    .frame(width: max(160, geometry.size.width * 0.18))
                 
-                // Progress circle with smooth animation
+                // Progress circle with smooth animation - responsive thickness
                 Circle()
                     .trim(from: 0, to: timerManager.progress)
                     .stroke(
                         timerManager.currentMode.color,
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        style: StrokeStyle(lineWidth: max(3, geometry.size.width * 0.004), lineCap: .round)
                     )
-                    .frame(width: max(120, geometry.size.width * 0.15))
+                    .frame(width: max(160, geometry.size.width * 0.18))
                     .rotationEffect(.degrees(-90))
                     .animation(.easeInOut(duration: 1), value: timerManager.progress)
                 
-                // Timer text with BLACK weight
+                // Timer text with BLACK weight - larger and more responsive
                 Text(timerManager.formattedTime)
-                    .font(.system(size: max(48, geometry.size.width * 0.08), weight: .black, design: .rounded))
+                    .font(.system(size: max(56, min(geometry.size.width * 0.09, 120)), weight: .black, design: .rounded))
                     .foregroundColor(.white)
-                    .tracking(2)
+                    .tracking(max(2.5, geometry.size.width * 0.003))
                     .animation(.easeInOut(duration: 0.2), value: timerManager.formattedTime)
             }
             
-            // Enhanced control buttons
+            // Enhanced control buttons - better spacing
             timerControls(geometry: geometry)
             
-            // Session counter with animation
+            // Session counter with animation - better proportions
             if timerManager.sessionsCompleted > 0 {
-                VStack(spacing: 4) {
-                    HStack(spacing: 16) {
-                        VStack(spacing: 4) {
+                VStack(spacing: max(6, geometry.size.height * 0.008)) {
+                    HStack(spacing: max(20, geometry.size.width * 0.025)) {
+                        VStack(spacing: max(6, geometry.size.height * 0.008)) {
                             Text("Focus Sessions")
-                                .font(.system(size: max(10, geometry.size.width * 0.012), weight: .medium, design: .rounded))
+                                .font(.system(size: max(12, geometry.size.width * 0.014), weight: .medium, design: .rounded))
                                 .foregroundColor(.white.opacity(0.5))
-                                .tracking(0.5)
+                                .tracking(max(0.6, geometry.size.width * 0.0008))
                             Text("\(timerManager.sessionsCompleted)")
-                                .font(.system(size: max(16, geometry.size.width * 0.02), weight: .semibold, design: .rounded))
+                                .font(.system(size: max(18, geometry.size.width * 0.022), weight: .semibold, design: .rounded))
                                 .foregroundColor(timerManager.currentMode.color)
                                 .animation(.spring(response: 0.5, dampingFraction: 0.7), value: timerManager.sessionsCompleted)
                         }
-                        VStack(spacing: 4) {
+                        VStack(spacing: max(6, geometry.size.height * 0.008)) {
                             Text("Pomodoro Cycles")
-                                .font(.system(size: max(10, geometry.size.width * 0.012), weight: .medium, design: .rounded))
+                                .font(.system(size: max(12, geometry.size.width * 0.014), weight: .medium, design: .rounded))
                                 .foregroundColor(.white.opacity(0.5))
-                                .tracking(0.5)
+                                .tracking(max(0.6, geometry.size.width * 0.0008))
                             Text("\(timerManager.sessionsCompleted / 4)")
-                                .font(.system(size: max(16, geometry.size.width * 0.02), weight: .semibold, design: .rounded))
+                                .font(.system(size: max(18, geometry.size.width * 0.022), weight: .semibold, design: .rounded))
                                 .foregroundColor(timerManager.currentMode.color)
                                 .animation(.spring(response: 0.5, dampingFraction: 0.7), value: timerManager.sessionsCompleted)
                         }

@@ -96,6 +96,9 @@ enum QuoteCategory: String, CaseIterable, Codable {
     case productivity = "productivity"
     case wellness = "wellness"
     case success = "success"
+    case creativity = "creativity"
+    case leadership = "leadership"
+    case wisdom = "wisdom"
     
     var displayName: String {
         switch self {
@@ -104,6 +107,35 @@ enum QuoteCategory: String, CaseIterable, Codable {
         case .productivity: return "Productivity"
         case .wellness: return "Wellness"
         case .success: return "Success"
+        case .creativity: return "Creativity"
+        case .leadership: return "Leadership"
+        case .wisdom: return "Wisdom"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .motivation: return "flame.fill"
+        case .focus: return "target"
+        case .productivity: return "chart.line.uptrend.xyaxis"
+        case .wellness: return "leaf.fill"
+        case .success: return "trophy.fill"
+        case .creativity: return "paintbrush.fill"
+        case .leadership: return "person.2.fill"
+        case .wisdom: return "brain.head.profile"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .motivation: return AppColors.errorColor
+        case .focus: return AppColors.focusColor
+        case .productivity: return AppColors.successColor
+        case .wellness: return AppColors.longBreakColor
+        case .success: return AppColors.warningColor
+        case .creativity: return AppColors.shortBreakColor
+        case .leadership: return AppColors.infoColor
+        case .wisdom: return AppColors.focusColor.opacity(0.8)
         }
     }
 }

@@ -136,6 +136,57 @@ class QuotesManager: ObservableObject {
                 "Your potential is unlimited, {name}. Keep reaching.",
                 "Every day is a new opportunity for success, {name}.",
                 "Your determination is your destiny, {name}. Stay strong."
+            ],
+            QuoteCategory.creativity.rawValue: [
+                "Creativity is intelligence having fun.",
+                "The creative adult is the child who survived.",
+                "You can't use up creativity. The more you use, the more you have.",
+                "Creativity takes courage.",
+                "The way to get started is to quit talking and begin doing.",
+                "Innovation distinguishes between a leader and a follower.",
+                "Every artist was first an amateur.",
+                "The secret to creativity is knowing how to hide your sources.",
+                "Creativity is seeing what others see and thinking what no one else ever thought.",
+                "The creative process is a process of surrender, not control.",
+                "Your imagination is your preview of life's coming attractions, {name}.",
+                "Create without limits, {name}. Your ideas matter.",
+                "Your unique perspective is your greatest asset, {name}.",
+                "Every creation starts with an idea, {name}. Keep dreaming.",
+                "Your creativity lights up the world, {name}. Keep creating."
+            ],
+            QuoteCategory.leadership.rawValue: [
+                "The way to get started is to quit talking and begin doing.",
+                "A leader is one who knows the way, goes the way, and shows the way.",
+                "Leadership is not about being in charge. It is about taking care of those in your charge.",
+                "The greatest leader is not necessarily the one who does the greatest things. He is the one that gets the people to do the greatest things.",
+                "Leadership is the capacity to translate vision into reality.",
+                "A good leader takes a little more than his share of the blame, a little less than his share of the credit.",
+                "Leadership is not about titles, positions or flowcharts. It is about one life influencing another.",
+                "The best leaders are those who serve others.",
+                "Leadership is about making others better as a result of your presence and making sure that impact lasts in your absence.",
+                "Great leaders are almost always great simplifiers, who can cut through the clutter and offer a solution everybody can understand.",
+                "Your influence extends beyond what you see, {name}. Lead with purpose.",
+                "Every interaction is a chance to inspire, {name}. Use it wisely.",
+                "Your leadership style is uniquely yours, {name}. Own it.",
+                "Leaders like you make the difference, {name}. Keep guiding.",
+                "Your vision creates the path for others, {name}. Keep leading."
+            ],
+            QuoteCategory.wisdom.rawValue: [
+                "The only true wisdom is in knowing you know nothing.",
+                "Wisdom is not a product of schooling but of the lifelong attempt to acquire it.",
+                "The fool doth think he is wise, but the wise man knows himself to be a fool.",
+                "By three methods we may learn wisdom: First, by reflection, which is noblest; Second, by imitation, which is easiest; and third by experience, which is the bitterest.",
+                "The beginning of wisdom is found in doubting; by doubting we come to the question, and by seeking we may come upon the truth.",
+                "Wisdom comes from experience. Experience is often a result of lack of wisdom.",
+                "The saddest aspect of life right now is that science gathers knowledge faster than society gathers wisdom.",
+                "Knowing yourself is the beginning of all wisdom.",
+                "The wise find pleasure in water; the virtuous find pleasure in hills.",
+                "Yesterday I was clever, so I wanted to change the world. Today I am wise, so I am changing myself.",
+                "Your wisdom grows with every experience, {name}. Trust your journey.",
+                "Listen deeply, {name}. Wisdom speaks in whispers.",
+                "Your intuition is your inner wisdom, {name}. Honor it.",
+                "Every challenge teaches wisdom, {name}. Embrace the lessons.",
+                "Your perspective brings wisdom to others, {name}. Share it."
             ]
         ]
     }
