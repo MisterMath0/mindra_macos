@@ -200,13 +200,16 @@ struct ModernSoundPicker: View {
     @Binding var showPreview: Bool
     
     @State private var isPlayingPreview = false
+    @StateObject private var audioService = AudioService()
     
     private let soundOptions: [(String, String, String)] = [
-        ("bell", "Bell", "bell.fill"),
+        ("sparkle", "Sparkle", "sparkles"),
         ("chime", "Chime", "tuningfork"),
-        ("ding", "Ding", "bell.circle.fill"),
-        ("gentle", "Gentle", "waveform"),
-        ("subtle", "Subtle", "speaker.wave.1.fill")
+        ("bellSoft", "Bell (Soft)", "bell.fill"),
+        ("bellLoud", "Bell (Loud)", "bell.circle.fill"),
+        ("trainArrival", "Train Arrival", "tram.fill"),
+        ("commuterJingle", "Commuter Jingle", "music.note"),
+        ("gameShow", "Game Show", "party.popper.fill")
     ]
     
     var body: some View {
@@ -274,10 +277,12 @@ struct ModernSoundPicker: View {
             isPlayingPreview = true
         }
         
-        // In a real implementation, you would play the actual sound here
-        // AudioManager.shared.playSound(selectedSound, volume: volume)
+        // Map the selected sound to SoundOption and play it
+        if let soundOption = SoundOption(rawValue: selectedSound) {
+            audioService.playSound(soundOption, volume: Float(volume / 100.0))
+        }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             withAnimation(Animation.spring(response: 0.3, dampingFraction: 0.7)) {
                 isPlayingPreview = false
             }
@@ -296,6 +301,7 @@ struct SoundOptionCard: View {
     let onTap: () -> Void
     
     @State private var isPressed = false
+    @StateObject private var audioService = AudioService()
     
     var body: some View {
         Button(action: onTap) {
@@ -364,6 +370,11 @@ struct SoundOptionCard: View {
         .onTapGesture {
             withAnimation(Animation.spring(response: 0.2, dampingFraction: 0.8)) {
                 isPressed = true
+            }
+            
+            // Play sound preview when tapped
+            if let soundOption = SoundOption(rawValue: soundId) {
+                audioService.playSound(soundOption, volume: Float(volume / 100.0))
             }
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

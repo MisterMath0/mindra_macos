@@ -16,6 +16,9 @@ struct ContentView: View {
     @EnvironmentObject var appModeManager: AppModeManager
     @EnvironmentObject var quotesManager: QuotesManager
     @EnvironmentObject var greetingManager: GreetingManager
+    @EnvironmentObject var audioService: AudioService
+    
+    @State private var showSoundPicker = false
     
     var body: some View {
         GeometryReader { geometry in
@@ -55,6 +58,11 @@ struct ContentView: View {
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.7), value: windowManager.isCompact)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: navigationManager.currentPage)
+        .sheet(isPresented: $showSoundPicker) {
+            PremiumSoundPickerView()
+                .environmentObject(statsManager)
+                .environmentObject(audioService)
+        }
     }
     
     // MARK: - Enhanced Compact PiP View
@@ -537,7 +545,9 @@ struct ContentView: View {
         HStack {
             // Left side controls
             HStack(spacing: max(20, geometry.size.width * 0.025)) {
-                navButton(icon: "bell", action: { }, geometry: geometry)
+                navButton(icon: "bell", action: { 
+                    showSoundPicker = true 
+                }, geometry: geometry)
             }
             .frame(width: max(60, geometry.size.width * 0.08), alignment: .leading)
             
@@ -659,4 +669,5 @@ struct ContentView: View {
         .environmentObject(AppModeManager())
         .environmentObject(QuotesManager())
         .environmentObject(GreetingManager())
+        .environmentObject(AudioService())
 }
