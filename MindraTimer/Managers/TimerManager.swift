@@ -27,6 +27,8 @@ class TimerManager: ObservableObject {
     private var timer: Timer?
     private var currentSessionId: String?
     private var sessionStartTime: Date?
+    private var isSkipping = false
+    private let skipDebounceInterval: TimeInterval = 0.5
     
     // MARK: - Initialization
     
@@ -153,47 +155,45 @@ class TimerManager: ObservableObject {
     }
     
     func skipTimer() {
+        // Prevent rapid consecutive skips
+        guard !isSkipping else {
+            print("⏭️ Skip blocked - Previous skip still in progress")
+            return
+        }
+        
         print("⏭️ SkipTimer called - Current state: active=\(isActive), paused=\(isPaused), mode=\(currentMode.displayName)")
+        
+        // Set skipping flag
+        isSkipping = true
         
         // Store the current timer state before skipping
         let wasActive = isActive
         let wasPaused = isPaused
         
-        // End current session
-        endCurrentSession(completed: false)
+        // Stop the current timer first
+        stopInternalTimer()
         
-        // Determine next mode
-        let wasInFocus = currentMode == .focus
-        
-        // Update sessions completed for focus sessions
-        if wasInFocus {
-            // DON'T increment locally - wait for database sync
-            // Let StatsManager handle the session tracking
-            
-            // Refresh session count from database after skip
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.syncSessionsFromDatabase()
-            }
-        }
-        
-        // Get next mode
+        // Get next mode and duration
         let nextMode = determineNextMode()
+        let newDuration = Int(sessionConfiguration.duration(for: nextMode))
         
         // Update to next mode with new duration
-        let newDuration = Int(sessionConfiguration.duration(for: nextMode))
         timeRemaining = newDuration
         currentMode = nextMode
         totalDuration = newDuration
+        
+        // End current session
+        endCurrentSession(completed: false)
         
         // CRITICAL FIX: Preserve timer state (running/paused) after skip
         if wasActive && !wasPaused {
             // Timer was running - keep it running with new mode
             isActive = true
             isPaused = false
-            // Restart the internal timer with new duration
-            startInternalTimer()
             // Start tracking for new mode
             startSessionTracking()
+            // Restart the internal timer with new duration
+            startInternalTimer()
             print("✅ Timer skipped to \(nextMode.displayName) - CONTINUING to run")
         } else if wasPaused {
             // Timer was paused - keep it paused with new mode  
@@ -205,6 +205,11 @@ class TimerManager: ObservableObject {
             isActive = false
             isPaused = false
             print("✅ Timer skipped to \(nextMode.displayName) - REMAINING stopped")
+        }
+        
+        // Reset skipping flag after debounce interval
+        DispatchQueue.main.asyncAfter(deadline: .now() + skipDebounceInterval) { [weak self] in
+            self?.isSkipping = false
         }
     }
     
