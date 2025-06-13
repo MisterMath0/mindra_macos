@@ -286,8 +286,9 @@ class TimerManager: ObservableObject {
         
         print("🕑 Creating new timer instance")
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            Task { @MainActor in
-                self.tick()
+            // Ensure tick happens on main thread
+            DispatchQueue.main.async { [weak self] in
+                self?.tick()
             }
         }
     }
@@ -302,7 +303,6 @@ class TimerManager: ObservableObject {
         }
     }
     
-    @MainActor
     private func tick() {
         guard timeRemaining > 0 else {
             handleTimerCompletion()

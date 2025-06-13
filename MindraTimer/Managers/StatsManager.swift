@@ -300,52 +300,56 @@ class StatsManager: ObservableObject {
     }
     
     func completeSession(sessionId: String, mode: TimerMode, duration: Int, completed: Bool) {
-        guard let startTime = sessionStartTime else {
-            print("❌ No start time found for session completion")
-            return
-        }
-        
-        let endTime = Date()
-        
-        let session = FocusSession(
-            id: sessionId,
-            startedAt: startTime,
-            endedAt: endTime,
-            duration: duration,
-            completed: completed,
-            mode: mode
-        )
-        
-        let success = database.addSession(session)
-        print("💾 Session saved: \(success ? "✅" : "❌") - \(mode.displayName), completed: \(completed)")
-        
-        if success {
-            // Clear session tracking
-            currentSessionId = nil
-            sessionStartTime = nil
+        // Ensure database operations happen on main thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self,
+                  let startTime = self.sessionStartTime else {
+                print("❌ No start time found for session completion")
+                return
+            }
             
-            // Refresh stats
-            fetchStats(for: settingsManager.displayPeriod)
+            let endTime = Date()
             
-            // Update session completion
-            if database.updateSessionCompletion(sessionId: sessionId, completed: completed) {
-                // Update achievements based on session completion
-                if completed && mode == .focus {
-                    // Increment sessions completed count in database
-                    incrementSessionsCompleted()
-                    
-                    // Update focus time achievement (accumulate total time)
-                    updateAchievementProgress(type: .totalFocusTime, progress: Double(duration) / 60.0)
-                    
-                    // Update sessions completed achievement (increment by 1)
-                    updateAchievementProgress(type: .sessionsCompleted, progress: 1.0)
-                    
-                    // Update streak achievement (set to current streak)
-                    if let streak = calculateCurrentStreak() {
-                        updateAchievementProgress(type: .streak, progress: Double(streak))
+            let session = FocusSession(
+                id: sessionId,
+                startedAt: startTime,
+                endedAt: endTime,
+                duration: duration,
+                completed: completed,
+                mode: mode
+            )
+            
+            let success = self.database.addSession(session)
+            print("💾 Session saved: \(success ? "✅" : "❌") - \(mode.displayName), completed: \(completed)")
+            
+            if success {
+                // Clear session tracking
+                self.currentSessionId = nil
+                self.sessionStartTime = nil
+                
+                // Refresh stats
+                self.fetchStats(for: self.settingsManager.displayPeriod)
+                
+                // Update session completion
+                if self.database.updateSessionCompletion(sessionId: sessionId, completed: completed) {
+                    // Update achievements based on session completion
+                    if completed && mode == .focus {
+                        // Increment sessions completed count in database
+                        self.incrementSessionsCompleted()
+                        
+                        // Update focus time achievement (accumulate total time)
+                        self.updateAchievementProgress(type: .totalFocusTime, progress: Double(duration) / 60.0)
+                        
+                        // Update sessions completed achievement (increment by 1)
+                        self.updateAchievementProgress(type: .sessionsCompleted, progress: 1.0)
+                        
+                        // Update streak achievement (set to current streak)
+                        if let streak = self.calculateCurrentStreak() {
+                            self.updateAchievementProgress(type: .streak, progress: Double(streak))
+                        }
+                        
+                        print("📊 Achievement progress updated for completed focus session")
                     }
-                    
-                    print("📊 Achievement progress updated for completed focus session")
                 }
             }
         }
