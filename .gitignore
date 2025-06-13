@@ -113,3 +113,6 @@ iOSInjectionProject/
 # Build outputs
 *.app
 *.framework
+
+# DMG files in root directory
+MindraTimer.dmg
