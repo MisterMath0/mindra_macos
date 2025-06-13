@@ -369,11 +369,9 @@ struct ContentView: View {
             // Enhanced control buttons
             timerControls(geometry: geometry)
             
-            // Session counter with animation
-            if timerManager.sessionsCompleted > 0 {
-                sessionCounter(geometry: geometry)
-                    .transition(.scale.combined(with: .opacity))
-            }
+            // Minimal stats display (pulls from database)
+            minimalPomodoroStats(geometry: geometry)
+                .transition(.scale.combined(with: .opacity))
         }
     }
     
@@ -433,6 +431,79 @@ struct ContentView: View {
         }
         .buttonStyle(PlainButtonStyle())
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPrimary)
+    }
+    
+    private func minimalPomodoroStats(geometry: GeometryProxy) -> some View {
+        HStack(spacing: max(20, geometry.size.width * 0.025)) {
+            // Today's sessions with icon
+            HStack(spacing: max(8, geometry.size.width * 0.01)) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: max(14, geometry.size.width * 0.016), weight: .medium))
+                    .foregroundColor(AppColors.successColor)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(statsManager.getSessionsToday())")
+                        .font(.system(size: max(16, geometry.size.width * 0.02), weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text("today")
+                        .font(.system(size: max(10, geometry.size.width * 0.012), weight: .regular, design: .rounded))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+            }
+            
+            // Divider
+            Rectangle()
+                .fill(.white.opacity(0.2))
+                .frame(width: 1, height: max(24, geometry.size.height * 0.03))
+            
+            // Current streak with icon
+            HStack(spacing: max(8, geometry.size.width * 0.01)) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: max(14, geometry.size.width * 0.016), weight: .medium))
+                    .foregroundColor(AppColors.warningColor)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(statsManager.getCurrentStreak())")
+                        .font(.system(size: max(16, geometry.size.width * 0.02), weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text("streak")
+                        .font(.system(size: max(10, geometry.size.width * 0.012), weight: .regular, design: .rounded))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+            }
+            
+            // Divider
+            Rectangle()
+                .fill(.white.opacity(0.2))
+                .frame(width: 1, height: max(24, geometry.size.height * 0.03))
+            
+            // Cycles completed with icon
+            HStack(spacing: max(8, geometry.size.width * 0.01)) {
+                Image(systemName: "arrow.2.circlepath")
+                    .font(.system(size: max(14, geometry.size.width * 0.016), weight: .medium))
+                    .foregroundColor(AppColors.focusColor)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(statsManager.getSessionsToday() / 4)")
+                        .font(.system(size: max(16, geometry.size.width * 0.02), weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text("cycles")
+                        .font(.system(size: max(10, geometry.size.width * 0.012), weight: .regular, design: .rounded))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+            }
+        }
+        .padding(.horizontal, max(16, geometry.size.width * 0.02))
+        .padding(.vertical, max(8, geometry.size.height * 0.01))
+        .background(
+            RoundedRectangle(cornerRadius: max(8, geometry.size.width * 0.01))
+                .fill(Color.white.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: max(8, geometry.size.width * 0.01))
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
+        )
+        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: statsManager.getSessionsToday())
     }
     
     private func sessionCounter(geometry: GeometryProxy) -> some View {

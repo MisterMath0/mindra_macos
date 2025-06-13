@@ -61,6 +61,13 @@ class TimerManager: ObservableObject {
     
     func startTimer() {
         print("🟢 StartTimer called - isActive: \(isActive), isPaused: \(isPaused)")
+        
+        // Check if we're resuming from pause
+        if isPaused {
+            resumeTimer()
+            return
+        }
+        
         guard !isActive else { 
             print("⚠️ Timer already active, ignoring start request")
             return 
@@ -362,7 +369,16 @@ class TimerManager: ObservableObject {
         switch currentMode {
         case .focus:
             // After focus, decide between short and long break
-            return (sessionsCompleted % sessionConfiguration.sessionsUntilLongBreak == 0) ? .longBreak : .shortBreak
+            // We need to get the actual completed sessions count from the database
+            let actualSessionsCompleted = statsManager?.getSessionsToday() ?? sessionsCompleted
+            let sessionsBeforeLongBreak = sessionConfiguration.sessionsUntilLongBreak
+            
+            // Check if it's time for a long break
+            if actualSessionsCompleted > 0 && actualSessionsCompleted % sessionsBeforeLongBreak == 0 {
+                return .longBreak
+            } else {
+                return .shortBreak
+            }
         case .shortBreak, .longBreak:
             // After any break, return to focus
             return .focus
@@ -389,17 +405,23 @@ class TimerManager: ObservableObject {
     }
     
     private func endCurrentSession(completed: Bool) {
-        guard let sessionId = currentSessionId else { return }
+        guard let sessionId = currentSessionId,
+              let startTime = sessionStartTime else { return }
         
-        if completed {
+        // Calculate actual duration based on time elapsed
+        let actualDuration = Int(Date().timeIntervalSince(startTime))
+        
+        // Only save to database if this was a focus session
+        if currentMode == .focus {
             statsManager?.completeSession(
                 sessionId: sessionId,
                 mode: currentMode,
-                duration: totalDuration,
-                completed: true
+                duration: actualDuration,
+                completed: completed
             )
         } else {
-            statsManager?.resetSession()
+            // For breaks, just log but don't save to database
+            print("🏖️ Break session ended: \(currentMode.displayName)")
         }
         
         currentSessionId = nil
