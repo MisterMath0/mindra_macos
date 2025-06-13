@@ -15,19 +15,12 @@ struct SoundSettingsView: View {
     @State private var showSoundPreview = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 32) {
-            // Header
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Sound & Notifications")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(AppColors.primaryText)
-                
-                Text("Customize your audio experience and notification preferences")
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
-                    .foregroundColor(AppColors.secondaryText)
-            }
-            
-            VStack(spacing: 24) {
+        SettingsScrollContainer {
+            SettingsContentSection(
+                title: "Sound & Notifications",
+                subtitle: "Customize your audio experience and notification preferences"
+            ) {
+                VStack(spacing: 24) {
                 // Core Audio Settings
                 VStack(spacing: 16) {
                     SectionHeader(
@@ -192,11 +185,9 @@ struct SoundSettingsView: View {
                         }
                     }
                 }
+                }
             }
-            
-            Spacer()
         }
-        .padding(.all, 40)
         .animation(Animation.spring(response: 0.4, dampingFraction: 0.8), value: coordinator.soundEnabled)
     }
 }

@@ -19,6 +19,9 @@ class WindowManager: ObservableObject {
         self.window = window
         setupWindow()
         
+        // 🎯 SET OPTIMAL INITIAL SIZE
+        setOptimalInitialSize()
+        
         // Add notification observer for window focus changes
         NotificationCenter.default.addObserver(
             self,
@@ -93,7 +96,7 @@ class WindowManager: ObservableObject {
             window.standardWindowButton(.miniaturizeButton)?.isHidden = true
             window.standardWindowButton(.zoomButton)?.isHidden = true
             
-            // 📱 COMPACT CONSTRAINTS
+            // 📱 OPTIMIZED COMPACT CONSTRAINTS
             window.styleMask = [.resizable, .fullSizeContentView]
             window.minSize = NSSize(width: 320, height: 200)
             window.maxSize = NSSize(width: 600, height: 400)
@@ -102,9 +105,10 @@ class WindowManager: ObservableObject {
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             
-            // OPTIMAL COMPACT SIZE
-            let newSize = NSSize(width: 400, height: 250)
-            window.setContentSize(newSize)
+            // 🎯 OPTIMAL COMPACT SIZE - Better proportions
+            let compactSize = getOptimalCompactSize()
+            window.setContentSize(compactSize)
+            print("📱 COMPACT MODE: \(compactSize.width) x \(compactSize.height)")
             
             // ROUNDED CORNERS
             window.contentView?.wantsLayer = true
@@ -136,9 +140,10 @@ class WindowManager: ObservableObject {
             window.titleVisibility = .visible
             window.titlebarAppearsTransparent = true
             
-            // Set good default size
+            // 🎯 Set optimal default size
             let newSize = NSSize(width: screenSize.defaultWidth, height: screenSize.defaultHeight)
             window.setContentSize(newSize)
+            print("🖥️ FULL MODE: \(screenSize.defaultWidth) x \(screenSize.defaultHeight)")
             
             // Remove rounded corners for full mode
             window.contentView?.layer?.cornerRadius = 0
@@ -156,53 +161,53 @@ class WindowManager: ObservableObject {
         centerWindowOnScreen()
     }
     
-    // MARK: - 🎯 BETTER RESPONSIVE SIZING LOGIC
+    // MARK: - 🎯 OPTIMAL WINDOW SIZING - RESEARCH-BASED IMPLEMENTATION
     
     private func getOptimalWindowSize() -> (defaultWidth: CGFloat, defaultHeight: CGFloat, minWidth: CGFloat, minHeight: CGFloat) {
         guard let screen = NSScreen.main else {
-            // Conservative fallback
-            return (defaultWidth: 1200, defaultHeight: 800, minWidth: 1000, minHeight: 700)
+            // Conservative fallback - Use research-recommended standard size
+            return (defaultWidth: 1000, defaultHeight: 750, minWidth: 900, minHeight: 650)
         }
         
         let screenSize = screen.visibleFrame.size
         print("🖥️ Detected screen: \(screenSize.width) x \(screenSize.height)")
         
-        // BETTER SIZING - More reasonable proportions
+        // 🎯 RESEARCH-BASED OPTIMAL SIZING
+        // Based on analysis: Settings content is 1636px tall, needs optimization
         let defaultWidth: CGFloat
         let defaultHeight: CGFloat
         let minWidth: CGFloat
         let minHeight: CGFloat
         
-        if screenSize.width >= 3000 { // 4K+ Ultra-wide displays
+        if screenSize.width >= 2560 && screenSize.height >= 1440 { // 4K+ displays
+            // Large: 1400×950px - Spacious for large displays
             defaultWidth = 1400
-            defaultHeight = 900
+            defaultHeight = 950
             minWidth = 1200
-            minHeight = 800
-        } else if screenSize.width >= 2560 { // 4K displays
-            defaultWidth = 1300
-            defaultHeight = 850
-            minWidth = 1100
-            minHeight = 750
-        } else if screenSize.width >= 1920 { // 1080p+ displays
+            minHeight = 850
+        } else if screenSize.width >= 1920 && screenSize.height >= 1080 { // 1080p+ displays
+            // Comfortable: 1200×850px - Good for larger MacBooks
             defaultWidth = 1200
-            defaultHeight = 800
+            defaultHeight = 850
             minWidth = 1000
-            minHeight = 700
-        } else if screenSize.width >= 1440 { // MacBook displays
-            defaultWidth = 1100
+            minHeight = 750
+        } else if screenSize.width >= 1440 && screenSize.height >= 900 { // MacBook Air 13"+ displays
+            // 🎯 STANDARD: 1000×750px - OPTIMAL DEFAULT SIZE
+            defaultWidth = 1000
             defaultHeight = 750
-            minWidth = 950
+            minWidth = 900
             minHeight = 650
         } else { // Smaller displays
-            defaultWidth = 1000
-            defaultHeight = 700
-            minWidth = 900
+            // Compact: 900×650px - Minimal viable for all MacBooks
+            defaultWidth = 900
+            defaultHeight = 650
+            minWidth = 800
             minHeight = 600
         }
         
-        // Ensure reasonable screen utilization (65% max)
-        let maxAllowedWidth = screenSize.width * 0.65
-        let maxAllowedHeight = screenSize.height * 0.65
+        // Safety check: Ensure window fits on screen (80% max for safety)
+        let maxAllowedWidth = screenSize.width * 0.8
+        let maxAllowedHeight = screenSize.height * 0.8
         
         let finalSizing = (
             defaultWidth: min(defaultWidth, maxAllowedWidth),
@@ -211,8 +216,59 @@ class WindowManager: ObservableObject {
             minHeight: min(minHeight, maxAllowedHeight * 0.7)
         )
         
-        print("🎯 Selected sizing: \(finalSizing.defaultWidth) x \(finalSizing.defaultHeight)")
+        print("🎯 OPTIMAL SIZING APPLIED: \(finalSizing.defaultWidth) x \(finalSizing.defaultHeight)")
+        print("📱 Minimum size: \(finalSizing.minWidth) x \(finalSizing.minHeight)")
         return finalSizing
+    }
+    
+    private func getOptimalCompactSize() -> NSSize {
+        guard let screen = NSScreen.main else {
+            return NSSize(width: 400, height: 250)
+        }
+        
+        let screenSize = screen.visibleFrame.size
+        
+        // 📱 COMPACT SIZE OPTIMIZATION
+        // Scale based on screen size but keep reasonable proportions
+        let compactWidth: CGFloat
+        let compactHeight: CGFloat
+        
+        if screenSize.width >= 2560 { // Large displays
+            compactWidth = 480
+            compactHeight = 300
+        } else if screenSize.width >= 1920 { // 1080p displays
+            compactWidth = 450
+            compactHeight = 280
+        } else if screenSize.width >= 1440 { // MacBook displays
+            compactWidth = 400
+            compactHeight = 250
+        } else { // Smaller displays
+            compactWidth = 360
+            compactHeight = 220
+        }
+        
+        return NSSize(width: compactWidth, height: compactHeight)
+    }
+    
+    // MARK: - 🎯 OPTIMAL INITIAL SIZING
+    
+    private func setOptimalInitialSize() {
+        guard let window = window else { return }
+        
+        let sizing = getOptimalWindowSize()
+        
+        // Set initial size to optimal default
+        let initialSize = NSSize(width: sizing.defaultWidth, height: sizing.defaultHeight)
+        window.setContentSize(initialSize)
+        
+        // Set size constraints
+        window.minSize = NSSize(width: sizing.minWidth, height: sizing.minHeight)
+        
+        // Center the window after sizing
+        centerWindowOnScreen()
+        
+        print("✨ INITIAL WINDOW SIZE SET: \(sizing.defaultWidth) x \(sizing.defaultHeight)")
+        print("🔒 Minimum size constraint: \(sizing.minWidth) x \(sizing.minHeight)")
     }
     
     private func centerWindowOnScreen() {
