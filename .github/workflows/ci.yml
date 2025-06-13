@@ -22,7 +22,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '15.2'
+          xcode-version: '16.4'
 
       - name: Build for testing
         run: |
@@ -31,6 +31,7 @@ jobs:
             -project "$APP_NAME.xcodeproj" \
             -configuration Debug \
             -derivedDataPath build/ \
+            SWIFT_OPTIMIZATION_LEVEL=-Onone \
             -verbose
 
       - name: Run tests
@@ -40,6 +41,7 @@ jobs:
             -project "$APP_NAME.xcodeproj" \
             -configuration Debug \
             -derivedDataPath build/ \
+            SWIFT_OPTIMIZATION_LEVEL=-Onone \
             -destination 'platform=macOS' \
             -verbose
         continue-on-error: true
@@ -51,4 +53,5 @@ jobs:
             -project "$APP_NAME.xcodeproj" \
             -configuration Release \
             -derivedDataPath build/ \
+            SWIFT_OPTIMIZATION_LEVEL=-Onone \
             -verbose
