@@ -3,214 +3,461 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindraTimer - A Beautiful Timer App for macOS</title>
+    <title>MindraTimer - Focus Better. Achieve More.</title>
+    <meta name="description" content="Beautiful, intuitive timer app for macOS. Boost your productivity with focus sessions, achievement tracking, and motivational quotes.">
     <style>
         :root {
-            --primary-color: #007AFF;
-            --background-color: #1C1C1E;
-            --surface-color: #2C2C2E;
-            --text-color: #FFFFFF;
+            --primary: #007AFF;
+            --primary-dark: #0056CC;
+            --accent: #0A84FF;
+            --bg-primary: #000000;
+            --bg-secondary: #1C1C1E;
+            --surface: #2C2C2E;
+            --text-primary: #FFFFFF;
             --text-secondary: #8E8E93;
-            --accent-color: #0A84FF;
+            --text-tertiary: #636366;
+            --border: #38383A;
+            --success: #32D74B;
+            --gradient: linear-gradient(135deg, #007AFF 0%, #0A84FF 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
             line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            color: var(--text-color);
-            background-color: var(--background-color);
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            overflow-x: hidden;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            background: radial-gradient(ellipse at center, rgba(0,122,255,0.1) 0%, transparent 70%);
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><radialGradient id="a" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%23007AFF" stop-opacity="0.1"/><stop offset="100%" stop-color="%23007AFF" stop-opacity="0"/></radialGradient></defs><circle cx="200" cy="200" r="2" fill="%23007AFF" opacity="0.4"/><circle cx="800" cy="300" r="1.5" fill="%23007AFF" opacity="0.3"/><circle cx="400" cy="600" r="1" fill="%23007AFF" opacity="0.5"/><circle cx="700" cy="800" r="2" fill="%23007AFF" opacity="0.2"/></svg>') center/cover;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            z-index: 1;
+            position: relative;
+        }
+
+        .app-icon {
+            width: 140px;
+            height: 140px;
+            border-radius: 32px;
+            margin: 0 auto 2rem;
+            box-shadow: 0 20px 60px rgba(0,122,255,0.3), 0 8px 32px rgba(0,0,0,0.4);
+            transition: transform 0.3s ease;
+        }
+
+        .app-icon:hover {
+            transform: scale(1.05);
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 4.5rem);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .tagline {
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            font-weight: 400;
+        }
+
+        .cta-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1.25rem 2.5rem;
+            background: var(--gradient);
+            color: white;
+            text-decoration: none;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(0,122,255,0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .download-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.6s;
+        }
+
+        .download-btn:hover::before {
+            left: 100%;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0,122,255,0.5);
+        }
+
+        .version-info {
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 8rem 2rem;
+            background: var(--bg-secondary);
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 2rem;
         }
 
-        header {
+        .section-header {
             text-align: center;
             margin-bottom: 4rem;
-            padding: 4rem 0;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.3), var(--background-color));
         }
 
-        .app-icon {
-            width: 120px;
-            height: 120px;
-            border-radius: 22px;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-        }
-
-        h1 {
-            font-size: 3.5rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .section-title {
+            font-size: clamp(2.5rem, 5vw, 3.5rem);
             font-weight: 700;
-        }
-
-        .subtitle {
-            font-size: 1.5rem;
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-        }
-
-        .download-section {
-            text-align: center;
-            margin: 4rem 0;
-            padding: 3rem;
-            background: var(--surface-color);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-        }
-
-        .download-button {
-            display: inline-block;
-            padding: 1rem 2.5rem;
-            background: var(--primary-color);
-            color: white;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1.2rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 16px rgba(0,122,255,0.3);
-        }
-
-        .download-button:hover {
-            background: var(--accent-color);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,122,255,0.4);
-        }
-
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin: 4rem 0;
-        }
-
-        .feature {
-            background: var(--surface-color);
-            padding: 2rem;
-            border-radius: 16px;
-            transition: transform 0.3s ease;
-        }
-
-        .feature:hover {
-            transform: translateY(-5px);
-        }
-
-        .feature h3 {
-            color: var(--primary-color);
             margin-bottom: 1rem;
-            font-size: 1.5rem;
         }
 
-        .feature p {
+        .section-subtitle {
+            font-size: 1.2rem;
             color: var(--text-secondary);
-            margin: 0;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
-        .screenshots {
+        .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 2rem;
-            margin: 4rem 0;
+            margin-top: 4rem;
         }
 
-        .screenshot {
-            border-radius: 16px;
+        .feature-card {
+            background: var(--surface);
+            padding: 2.5rem;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            position: relative;
             overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient);
+            transform: scaleX(0);
             transition: transform 0.3s ease;
         }
 
-        .screenshot:hover {
-            transform: scale(1.02);
+        .feature-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 60px rgba(0,122,255,0.1);
         }
 
-        .screenshot img {
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 24px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Screenshots Section */
+        .screenshots-section {
+            padding: 8rem 2rem;
+            background: var(--bg-primary);
+        }
+
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 4rem;
+        }
+
+        .screenshot-card {
+            background: var(--surface);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .screenshot-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+        }
+
+        .screenshot-card img {
             width: 100%;
             height: auto;
             display: block;
         }
 
+        /* CTA Section */
+        .cta-section {
+            padding: 8rem 2rem;
+            background: var(--bg-secondary);
+            text-align: center;
+        }
+
+        .cta-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .cta-section h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+
+        .cta-section p {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 4rem 2rem 2rem;
+            text-align: center;
+            color: var(--text-tertiary);
+            background: var(--bg-primary);
+            border-top: 1px solid var(--border);
+        }
+
+        .footer p {
+            margin-bottom: 1rem;
+        }
+
+        /* Responsive Design */
         @media (max-width: 768px) {
-            .container {
+            .hero {
+                min-height: 90vh;
                 padding: 1rem;
             }
 
-            h1 {
-                font-size: 2.5rem;
+            .features-section,
+            .screenshots-section,
+            .cta-section {
+                padding: 4rem 1rem;
             }
 
-            .features {
+            .features-grid,
+            .screenshots-grid {
                 grid-template-columns: 1fr;
+                gap: 1.5rem;
             }
+
+            .feature-card {
+                padding: 2rem;
+            }
+        }
+
+        /* Animation for scroll reveal */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.6s ease forwards;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <img src="assets/AppIcon.appiconset/icon_256x256.png" alt="MindraTimer Icon" class="app-icon">
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <img src="assets/AppIcon.appiconset/icon-256x256.png" alt="MindraTimer App Icon" class="app-icon">
             <h1>MindraTimer</h1>
-            <p class="subtitle">A beautiful and intuitive timer app for macOS</p>
-        </header>
-
-        <div class="download-section">
-            <h2>Download MindraTimer</h2>
-            <p>Get started with MindraTimer today</p>
-            <a href="MindraTimer.dmg" class="download-button">Download DMG</a>
-        </div>
-
-        <div class="features">
-            <div class="feature">
-                <h3>Beautiful Interface</h3>
-                <p>Enjoy a clean, modern interface designed for macOS with dark mode support</p>
-            </div>
-            <div class="feature">
-                <h3>Multiple Timer Modes</h3>
-                <p>Choose between different timer modes to suit your needs</p>
-            </div>
-            <div class="feature">
-                <h3>Customizable Sounds</h3>
-                <p>Select from a variety of notification sounds</p>
-            </div>
-            <div class="feature">
-                <h3>Session Tracking</h3>
-                <p>Keep track of your focus sessions and progress</p>
+            <p class="tagline">Focus Better. Achieve More.</p>
+            <div class="cta-container">
+                <a href="MindraTimer.dmg" class="download-btn">
+                    📥 Download for macOS
+                </a>
+                <p class="version-info">Version 1.0 • Free Download • macOS 12.0+</p>
             </div>
         </div>
+    </section>
 
-        <div class="screenshots">
-            <div class="screenshot">
-                <img src="assets/Screenshots/main_page.png" alt="Main Timer View">
+    <!-- Features Section -->
+    <section class="features-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Everything You Need to Stay Focused</h2>
+                <p class="section-subtitle">A beautifully designed timer app that helps you boost productivity and build better focus habits</p>
             </div>
-            <div class="screenshot">
-                <img src="assets/Screenshots/focus_page.png" alt="Focus Page View">
-            </div>
-            <div class="screenshot">
-                <img src="assets/Screenshots/stats_page_progress.png" alt="Statistics View">
-            </div>
-            <div class="screenshot">
-                <img src="assets/Screenshots/achievements.png" alt="Achievements View">
-            </div>
-            <div class="screenshot">
-                <img src="assets/Screenshots/profile_page.png" alt="Profile Settings View">
-            </div>
-            <div class="screenshot">
-                <img src="assets/Screenshots/quotes_categories.png" alt="Quotes Categories View">
-            </div>
-            <div class="screenshot">
-                <img src="assets/Screenshots/sound_settings.png" alt="Sound Settings View">
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⏰</div>
+                    <h3>Smart Timer Modes</h3>
+                    <p>Pomodoro, custom timers, and focus sessions designed to maximize your productivity and maintain deep work flow.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Progress Tracking</h3>
+                    <p>Visualize your focus journey with detailed statistics, streaks, and achievements that motivate you to stay consistent.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Achievement System</h3>
+                    <p>Unlock rewards and milestones as you build your focus habits. Gamify your productivity journey.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">💭</div>
+                    <h3>Motivational Quotes</h3>
+                    <p>Get inspired with curated quotes and wisdom from different categories to keep you motivated throughout your day.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🔊</div>
+                    <h3>Custom Sounds</h3>
+                    <p>Choose from a variety of focus sounds and notification tones that create the perfect ambient environment.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🌙</div>
+                    <h3>Beautiful Design</h3>
+                    <p>Crafted for macOS with native design principles, dark mode support, and an interface that feels right at home.</p>
+                </div>
             </div>
         </div>
-    </div>
+    </section>
+
+    <!-- Screenshots Section -->
+    <section class="screenshots-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">See MindraTimer in Action</h2>
+                <p class="section-subtitle">Experience the clean, intuitive interface designed for focus</p>
+            </div>
+            
+            <div class="screenshots-grid">
+                <div class="screenshot-card">
+                    <img src="assets/Screenshots/main_page.png" alt="Clean, minimalist timer interface">
+                </div>
+                <div class="screenshot-card">
+                    <img src="assets/Screenshots/focus_page.png" alt="Focus session in progress">
+                </div>
+                <div class="screenshot-card">
+                    <img src="assets/Screenshots/stats_page_progress.png" alt="Detailed progress statistics">
+                </div>
+                <div class="screenshot-card">
+                    <img src="assets/Screenshots/achievements.png" alt="Achievement system and rewards">
+                </div>
+                <div class="screenshot-card">
+                    <img src="assets/Screenshots/profile_page.png" alt="Personalized profile settings">
+                </div>
+                <div class="screenshot-card">
+                    <img src="assets/Screenshots/quotes_categories.png" alt="Inspirational quote categories">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA Section -->
+    <section class="cta-section">
+        <div class="cta-content">
+            <h2>Ready to Transform Your Focus?</h2>
+            <p>Join thousands of users who've already improved their productivity with MindraTimer</p>
+            <a href="MindraTimer.dmg" class="download-btn">
+                🚀 Start Focusing Today
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>© 2025 MindraTimer. Crafted with ❤️ for focused minds.</p>
+            <p>Compatible with macOS 12.0 and later</p>
+        </div>
+    </footer>
 </body>
-</html> 
+</html>
