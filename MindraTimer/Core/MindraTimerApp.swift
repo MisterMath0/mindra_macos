@@ -16,6 +16,7 @@ struct MindraTimerApp: App {
     @StateObject private var appModeManager = AppModeManager()
     @StateObject private var quotesManager = QuotesManager()
     @StateObject private var greetingManager = GreetingManager()
+    @StateObject private var audioService = AudioService()
     
     init() {
         // Set appearance when the app is ready
@@ -34,10 +35,14 @@ struct MindraTimerApp: App {
                 .environmentObject(appModeManager)
                 .environmentObject(quotesManager)
                 .environmentObject(greetingManager)
+                .environmentObject(audioService)
                 .background(WindowAccessor(windowManager: windowManager))
                 .onAppear {
                     // Connect timer manager with stats manager
                     timerManager.setStatsManager(statsManager)
+                    
+                    // Connect timer manager with audio service
+                    timerManager.setAudioService(audioService)
                     
                     // Set up user name synchronization
                     let userName = UserDefaults.standard.string(forKey: "userName")
