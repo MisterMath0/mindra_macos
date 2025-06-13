@@ -42,15 +42,23 @@ class SessionRepository: BaseRepository<FocusSession>, Repository {
             INSERT INTO focus_sessions (id, started_at, ended_at, duration, completed, mode, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """
-        try executeUpdate(query, params: [
+        
+        // Convert dates to timestamps and handle optionals properly
+        let startedAtTimestamp = Int64(session.startedAt.timeIntervalSince1970)
+        let endedAtTimestamp: Int64? = session.endedAt != nil ? Int64(session.endedAt!.timeIntervalSince1970) : nil
+        let completedInt = session.completed ? 1 : 0
+        
+        var params: [Any] = [
             session.id,
-            session.startedAt,
-            session.endedAt as Any,
-            session.duration,
-            session.completed,
+            startedAtTimestamp,
+            endedAtTimestamp ?? NSNull(),
+            Int64(session.duration),
+            completedInt,
             session.mode.rawValue,
-            session.notes as Any
-        ])
+            session.notes ?? NSNull()
+        ]
+        
+        try executeUpdate(query, params: params)
     }
     
     func read(id: String) throws -> FocusSession {
@@ -73,15 +81,23 @@ class SessionRepository: BaseRepository<FocusSession>, Repository {
                 notes = ?
             WHERE id = ?
         """
-        try executeUpdate(query, params: [
-            session.startedAt,
-            session.endedAt as Any,
-            session.duration,
-            session.completed,
+        
+        // Convert dates to timestamps and handle optionals properly
+        let startedAtTimestamp = Int64(session.startedAt.timeIntervalSince1970)
+        let endedAtTimestamp: Int64? = session.endedAt != nil ? Int64(session.endedAt!.timeIntervalSince1970) : nil
+        let completedInt = session.completed ? 1 : 0
+        
+        var params: [Any] = [
+            startedAtTimestamp,
+            endedAtTimestamp ?? NSNull(),
+            Int64(session.duration),
+            completedInt,
             session.mode.rawValue,
-            session.notes as Any,
+            session.notes ?? NSNull(),
             session.id
-        ])
+        ]
+        
+        try executeUpdate(query, params: params)
     }
     
     func delete(id: String) throws {
@@ -96,7 +112,12 @@ class SessionRepository: BaseRepository<FocusSession>, Repository {
             WHERE started_at BETWEEN ? AND ? 
             ORDER BY started_at DESC
         """
-        let results = try executeQuery(query, params: [dateRange.start, dateRange.end])
+        
+        // Convert dates to timestamps for SQLite
+        let startTimestamp = Int64(dateRange.start.timeIntervalSince1970)
+        let endTimestamp = Int64(dateRange.end.timeIntervalSince1970)
+        
+        let results = try executeQuery(query, params: [startTimestamp, endTimestamp])
         return try results.map { try mapRow($0) }
     }
     
@@ -108,8 +129,16 @@ class SessionRepository: BaseRepository<FocusSession>, Repository {
             WHERE started_at BETWEEN ? AND ? 
             AND mode = 'focus'
         """
-        let results = try executeQuery(query, params: [dateRange.start, dateRange.end])
-        return results.first?["total"] as? Int ?? 0
+        
+        // Convert dates to timestamps for SQLite
+        let startTimestamp = Int64(dateRange.start.timeIntervalSince1970)
+        let endTimestamp = Int64(dateRange.end.timeIntervalSince1970)
+        
+        let results = try executeQuery(query, params: [startTimestamp, endTimestamp])
+        if let totalInt64 = results.first?["total"] as? Int64 {
+            return Int(totalInt64)
+        }
+        return 0
     }
     
     func getCompletedSessionsCount(for period: StatsPeriod) throws -> Int {
@@ -120,8 +149,16 @@ class SessionRepository: BaseRepository<FocusSession>, Repository {
             WHERE started_at BETWEEN ? AND ? 
             AND completed = 1
         """
-        let results = try executeQuery(query, params: [dateRange.start, dateRange.end])
-        return results.first?["count"] as? Int ?? 0
+        
+        // Convert dates to timestamps for SQLite
+        let startTimestamp = Int64(dateRange.start.timeIntervalSince1970)
+        let endTimestamp = Int64(dateRange.end.timeIntervalSince1970)
+        
+        let results = try executeQuery(query, params: [startTimestamp, endTimestamp])
+        if let countInt64 = results.first?["count"] as? Int64 {
+            return Int(countInt64)
+        }
+        return 0
     }
     
     func updateSessionCompletion(id: String, completed: Bool) throws {
@@ -131,7 +168,18 @@ class SessionRepository: BaseRepository<FocusSession>, Repository {
             SET completed = ?, ended_at = ?
             WHERE id = ?
         """
-        try executeUpdate(query, params: [completed, endedAt as Any, id])
+        
+        // Convert completion status and date properly
+        let completedInt = completed ? 1 : 0
+        let endedAtTimestamp: Int64? = endedAt != nil ? Int64(endedAt!.timeIntervalSince1970) : nil
+        
+        var params: [Any] = [
+            completedInt,
+            endedAtTimestamp ?? NSNull(),
+            id
+        ]
+        
+        try executeUpdate(query, params: params)
     }
     
     // MARK: - Stats Calculations

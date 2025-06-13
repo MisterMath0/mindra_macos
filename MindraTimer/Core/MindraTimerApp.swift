@@ -43,10 +43,36 @@ struct MindraTimerApp: App {
                     let userName = UserDefaults.standard.string(forKey: "userName")
                     quotesManager.setUserName(userName)
                     greetingManager.setUserName(userName)
+                    
+                    // One-time database fix (for development)
+                    #if DEBUG
+                    runDatabaseFixIfNeeded()
+                    #endif
                 }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentMinSize) // Always allow resizing
+    }
+    
+    private func runDatabaseFixIfNeeded() {
+        // Check if we need to run the database fix
+        let fixKey = "database_fix_applied_v1"
+        if !UserDefaults.standard.bool(forKey: fixKey) {
+            print("🚀 Running one-time database fix...")
+            
+            // Run the fix
+            DatabaseManager.shared.fixDatabaseIssuesNow()
+            
+            // Mark as complete
+            UserDefaults.standard.set(true, forKey: fixKey)
+            
+            // Initialize default achievements if needed
+            if statsManager.achievements.isEmpty {
+                statsManager.initializeDefaultAchievements()
+            }
+            
+            print("✅ Database fix complete!")
+        }
     }
 }
 

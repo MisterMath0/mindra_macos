@@ -1,6 +1,9 @@
 import Foundation
 import SQLite3
 
+// SQLite constants
+let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+
 protocol Repository {
     associatedtype T
     func create(_ item: T) throws
@@ -26,14 +29,30 @@ class BaseRepository<T> {
             statement = try connection.prepareStatement(query)
             defer { connection.finalizeStatement(statement) }
             
-            // Bind parameters
+            // Bind parameters with better optional handling
             for (index, param) in params.enumerated() {
                 let paramIndex = Int32(index + 1)
-                switch param {
+                
+                // Handle wrapped optionals
+                let unwrappedParam: Any
+                if let optionalParam = param as? Any? {
+                    if let value = optionalParam {
+                        unwrappedParam = value
+                    } else {
+                        sqlite3_bind_null(statement, paramIndex)
+                        continue
+                    }
+                } else {
+                    unwrappedParam = param
+                }
+                
+                switch unwrappedParam {
                 case let string as String:
-                    sqlite3_bind_text(statement, paramIndex, string, -1, nil)
+                    sqlite3_bind_text(statement, paramIndex, string, -1, SQLITE_TRANSIENT)
                 case let int as Int:
                     sqlite3_bind_int64(statement, paramIndex, Int64(int))
+                case let int64 as Int64:
+                    sqlite3_bind_int64(statement, paramIndex, int64)
                 case let double as Double:
                     sqlite3_bind_double(statement, paramIndex, double)
                 case let bool as Bool:
@@ -43,8 +62,15 @@ class BaseRepository<T> {
                     sqlite3_bind_int64(statement, paramIndex, timestamp)
                 case is NSNull:
                     sqlite3_bind_null(statement, paramIndex)
+                case nil:
+                    sqlite3_bind_null(statement, paramIndex)
                 default:
-                    throw DatabaseError.invalidParameter("Unsupported parameter type: \(type(of: param))")
+                    // Try to convert to string as last resort
+                    if let stringValue = String(describing: unwrappedParam) as String? {
+                        sqlite3_bind_text(statement, paramIndex, stringValue, -1, SQLITE_TRANSIENT)
+                    } else {
+                        throw DatabaseError.invalidParameter("Unsupported parameter type: \(type(of: unwrappedParam))")
+                    }
                 }
             }
             
@@ -94,14 +120,30 @@ class BaseRepository<T> {
             statement = try connection.prepareStatement(query)
             defer { connection.finalizeStatement(statement) }
             
-            // Bind parameters
+            // Bind parameters with better optional handling
             for (index, param) in params.enumerated() {
                 let paramIndex = Int32(index + 1)
-                switch param {
+                
+                // Handle wrapped optionals
+                let unwrappedParam: Any
+                if let optionalParam = param as? Any? {
+                    if let value = optionalParam {
+                        unwrappedParam = value
+                    } else {
+                        sqlite3_bind_null(statement, paramIndex)
+                        continue
+                    }
+                } else {
+                    unwrappedParam = param
+                }
+                
+                switch unwrappedParam {
                 case let string as String:
-                    sqlite3_bind_text(statement, paramIndex, string, -1, nil)
+                    sqlite3_bind_text(statement, paramIndex, string, -1, SQLITE_TRANSIENT)
                 case let int as Int:
                     sqlite3_bind_int64(statement, paramIndex, Int64(int))
+                case let int64 as Int64:
+                    sqlite3_bind_int64(statement, paramIndex, int64)
                 case let double as Double:
                     sqlite3_bind_double(statement, paramIndex, double)
                 case let bool as Bool:
@@ -111,17 +153,30 @@ class BaseRepository<T> {
                     sqlite3_bind_int64(statement, paramIndex, timestamp)
                 case is NSNull:
                     sqlite3_bind_null(statement, paramIndex)
+                case nil:
+                    sqlite3_bind_null(statement, paramIndex)
                 default:
-                    throw DatabaseError.invalidParameter("Unsupported parameter type: \(type(of: param))")
+                    // Try to convert to string as last resort
+                    if let stringValue = String(describing: unwrappedParam) as String? {
+                        sqlite3_bind_text(statement, paramIndex, stringValue, -1, SQLITE_TRANSIENT)
+                    } else {
+                        throw DatabaseError.invalidParameter("Unsupported parameter type: \(type(of: unwrappedParam))")
+                    }
                 }
             }
             
-            if sqlite3_step(statement) != SQLITE_DONE {
+            let result = sqlite3_step(statement)
+            if result != SQLITE_DONE {
                 let errorMessage = String(cString: sqlite3_errmsg(connection.getDatabasePointer()))
-                throw DatabaseError.queryFailed(errorMessage)
+                let errorCode = sqlite3_errcode(connection.getDatabasePointer())
+                throw DatabaseError.queryFailed("SQLite error \(errorCode): \(errorMessage) - Query: \(query)")
             }
         } catch {
-            throw DatabaseError.queryFailed("Failed to execute update: \(error.localizedDescription)")
+            if let dbError = error as? DatabaseError {
+                throw dbError
+            } else {
+                throw DatabaseError.queryFailed("Failed to execute update: \(error.localizedDescription)")
+            }
         }
     }
     

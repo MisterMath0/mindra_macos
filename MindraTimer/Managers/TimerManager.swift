@@ -46,6 +46,7 @@ class TimerManager: ObservableObject {
     func setStatsManager(_ statsManager: StatsManager) {
         self.statsManager = statsManager
         updateConfigurationFromSettings()
+        syncSessionsFromDatabase()
     }
     
     func setAudioService(_ audioService: AudioServiceProtocol) {
@@ -159,8 +160,13 @@ class TimerManager: ObservableObject {
         
         // Update sessions completed for focus sessions
         if wasInFocus {
-            sessionsCompleted += 1
-            savePersistedState()
+            // DON'T increment locally - wait for database sync
+            // Let StatsManager handle the session tracking
+            
+            // Refresh session count from database after skip
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.syncSessionsFromDatabase()
+            }
         }
         
         // Get next mode
@@ -331,8 +337,13 @@ class TimerManager: ObservableObject {
         
         // Update sessions completed for focus sessions
         if wasInFocus {
-            sessionsCompleted += 1
-            savePersistedState()
+            // DON'T increment locally - wait for database sync
+            // sessionsCompleted will be updated after database write
+            
+            // Refresh session count from database after completion
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.syncSessionsFromDatabase()
+            }
         }
         
         // Determine next mode
@@ -413,15 +424,15 @@ class TimerManager: ObservableObject {
     private func savePersistedState() {
         let encoder = JSONEncoder()
         
-        // Save session configuration
+        // Save session configuration ONLY (not session counts)
         if let configData = try? encoder.encode(sessionConfiguration) {
             UserDefaults.standard.set(configData, forKey: "sessionConfiguration")
         }
         
-        // Save sessions completed
-        UserDefaults.standard.set(sessionsCompleted, forKey: "sessionsCompleted")
+        // DO NOT save sessionsCompleted to UserDefaults - use database!
+        // The session count should come from StatsManager/Database
         
-        print("💾 Timer state persisted")
+        print("💾 Timer configuration persisted (sessions tracked in database)")
     }
     
     private func loadPersistedState() {
@@ -433,8 +444,9 @@ class TimerManager: ObservableObject {
             sessionConfiguration = config
         }
         
-        // Load sessions completed
-        sessionsCompleted = UserDefaults.standard.integer(forKey: "sessionsCompleted")
+        // DO NOT load sessionsCompleted from UserDefaults
+        // Instead, get it from StatsManager when available
+        sessionsCompleted = 0  // Will be updated from database
         
         // Update timer state with loaded configuration
         let duration = Int(sessionConfiguration.focusDuration)
@@ -444,7 +456,7 @@ class TimerManager: ObservableObject {
         currentMode = .focus
         totalDuration = duration
         
-        print("📖 Timer state loaded")
+        print("📖 Timer configuration loaded (sessions will sync from database)")
     }
     
     private func saveConfiguration() {
@@ -454,6 +466,18 @@ class TimerManager: ObservableObject {
     private func updateConfigurationFromSettings() {
         // Update configuration from settings manager if available
         // This would be implemented when SettingsManager includes timer settings
+    }
+    
+    private func syncSessionsFromDatabase() {
+        guard let statsManager = statsManager else { return }
+        
+        // Get today's completed focus sessions from database
+        let todaysSessions = statsManager.getSessionsToday()
+        
+        // Update sessions completed to match database
+        sessionsCompleted = todaysSessions
+        
+        print("🔄 Synced sessions from database: \(sessionsCompleted) sessions today")
     }
     
     // MARK: - Computed Properties
