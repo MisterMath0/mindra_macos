@@ -8,7 +8,7 @@ struct SoundPickerView: View {
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 3)
     @State private var selectedSound: SoundOption?
     @State private var isPlaying = false
-    @State private var audioPlayer: AVAudioPlayer?
+    @StateObject private var audioService = AudioService()
     
     private var soundEmojis: [SoundOption: String] = [
         .sparkle: "✨",
@@ -16,7 +16,8 @@ struct SoundPickerView: View {
         .bellSoft: "🔔",
         .bellLoud: "🔔",
         .trainArrival: "🚂",
-        .commuterJingle: "🎶"
+        .commuterJingle: "🎶",
+        .gameShow: "🎪"
     ]
     
     var body: some View {
@@ -73,31 +74,9 @@ struct SoundPickerView: View {
             selectedSound = sound
             statsManager.setSelectedSound(sound.rawValue)
             
-            // Stop any currently playing sound
-            audioPlayer?.stop()
-            
-            // Map the sound enum to the actual file name
-            let soundFileName = sound.rawValue
-                .replacingOccurrences(of: "bellSoft", with: "bell-soft")
-                .replacingOccurrences(of: "bellLoud", with: "bell-loud")
-                .replacingOccurrences(of: "trainArrival", with: "train-arrival")
-                .replacingOccurrences(of: "commuterJingle", with: "commuter-jingle")
-            
-            // Try to load and play the sound
-            if let url = Bundle.main.url(forResource: soundFileName, withExtension: "mp3") {
-                do {
-                    audioPlayer = try AVAudioPlayer(contentsOf: url)
-                    audioPlayer?.volume = Float(statsManager.settings.soundVolume) / 100.0
-                    audioPlayer?.play()
-                } catch {
-                    print("Error playing sound: \(error)")
-                    NSSound.beep()
-                }
-            } else {
-                print("Sound file not found: \(soundFileName).mp3")
-                print("Bundle path: \(Bundle.main.bundlePath)")
-                NSSound.beep()
-            }
+            // Use AudioService to play the sound
+            let volume = Float(statsManager.settings.soundVolume) / 100.0
+            audioService.playSound(sound, volume: volume)
         }) {
             VStack(spacing: 8) {
                 Text(soundEmojis[sound] ?? "🎵")
