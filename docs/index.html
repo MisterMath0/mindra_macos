@@ -7,18 +7,24 @@
     <meta name="description" content="Beautiful, intuitive timer app for macOS. Boost your productivity with focus sessions, achievement tracking, and motivational quotes.">
     <style>
         :root {
-            --primary: #007AFF;
-            --primary-dark: #0056CC;
-            --accent: #0A84FF;
-            --bg-primary: #000000;
-            --bg-secondary: #1C1C1E;
-            --surface: #2C2C2E;
+            --focus-purple: #9966E6;
+            --break-pink: #E680B3;
+            --break-blue: #4D99E6;
+            --bg-primary: #0D0D0D;
+            --bg-secondary: #141414;
+            --bg-tertiary: #1F1F1F;
+            --surface: #262626;
             --text-primary: #FFFFFF;
-            --text-secondary: #8E8E93;
-            --text-tertiary: #636366;
-            --border: #38383A;
-            --success: #32D74B;
-            --gradient: linear-gradient(135deg, #007AFF 0%, #0A84FF 100%);
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-tertiary: rgba(255, 255, 255, 0.5);
+            --border: rgba(255, 255, 255, 0.15);
+            --success: #33CC52;
+            --warning: #FF9900;
+            --error: #E6334D;
+            --info: #3DB3FF;
+            --gradient-primary: linear-gradient(135deg, #9966E6 0%, #E680B3 100%);
+            --gradient-secondary: linear-gradient(135deg, #4D99E6 0%, #9966E6 100%);
+            --gradient-tertiary: linear-gradient(135deg, #E680B3 0%, #4D99E6 100%);
         }
 
         * {
@@ -43,7 +49,11 @@
             justify-content: center;
             text-align: center;
             padding: 2rem;
-            background: radial-gradient(ellipse at center, rgba(0,122,255,0.1) 0%, transparent 70%);
+            background: 
+                radial-gradient(ellipse 800px 600px at 50% 20%, rgba(153,102,230,0.15) 0%, transparent 50%),
+                radial-gradient(ellipse 600px 400px at 80% 80%, rgba(230,128,179,0.1) 0%, transparent 50%),
+                radial-gradient(ellipse 400px 300px at 20% 70%, rgba(77,153,230,0.08) 0%, transparent 50%),
+                var(--bg-primary);
             position: relative;
         }
 
@@ -54,7 +64,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><radialGradient id="a" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%23007AFF" stop-opacity="0.1"/><stop offset="100%" stop-color="%23007AFF" stop-opacity="0"/></radialGradient></defs><circle cx="200" cy="200" r="2" fill="%23007AFF" opacity="0.4"/><circle cx="800" cy="300" r="1.5" fill="%23007AFF" opacity="0.3"/><circle cx="400" cy="600" r="1" fill="%23007AFF" opacity="0.5"/><circle cx="700" cy="800" r="2" fill="%23007AFF" opacity="0.2"/></svg>') center/cover;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><circle cx="200" cy="200" r="2" fill="%239966E6" opacity="0.4"/><circle cx="800" cy="300" r="1.5" fill="%23E680B3" opacity="0.3"/><circle cx="400" cy="600" r="1" fill="%234D99E6" opacity="0.5"/><circle cx="700" cy="800" r="2" fill="%239966E6" opacity="0.2"/><circle cx="100" cy="500" r="1" fill="%23E680B3" opacity="0.3"/><circle cx="900" cy="700" r="1.5" fill="%234D99E6" opacity="0.4"/></svg>') center/cover;
             pointer-events: none;
         }
 
@@ -69,7 +79,10 @@
             height: 140px;
             border-radius: 32px;
             margin: 0 auto 2rem;
-            box-shadow: 0 20px 60px rgba(0,122,255,0.3), 0 8px 32px rgba(0,0,0,0.4);
+            box-shadow: 
+                0 20px 60px rgba(153,102,230,0.4), 
+                0 8px 32px rgba(0,0,0,0.6),
+                0 0 0 1px rgba(255,255,255,0.1);
             transition: transform 0.3s ease;
         }
 
@@ -82,7 +95,7 @@
             font-weight: 700;
             line-height: 1.1;
             margin-bottom: 1.5rem;
-            background: var(--gradient);
+            background: var(--gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -107,14 +120,14 @@
             align-items: center;
             gap: 0.75rem;
             padding: 1.25rem 2.5rem;
-            background: var(--gradient);
+            background: var(--gradient-primary);
             color: white;
             text-decoration: none;
             border-radius: 16px;
             font-weight: 600;
             font-size: 1.1rem;
             transition: all 0.3s ease;
-            box-shadow: 0 8px 32px rgba(0,122,255,0.4);
+            box-shadow: 0 8px 32px rgba(153,102,230,0.4);
             position: relative;
             overflow: hidden;
         }
@@ -136,7 +149,7 @@
 
         .download-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(0,122,255,0.5);
+            box-shadow: 0 12px 40px rgba(153,102,230,0.6);
         }
 
         .version-info {
@@ -147,7 +160,10 @@
         /* Features Section */
         .features-section {
             padding: 8rem 2rem;
-            background: var(--bg-secondary);
+            background: 
+                linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%),
+                radial-gradient(ellipse 600px 400px at 30% 0%, rgba(77,153,230,0.05) 0%, transparent 70%),
+                radial-gradient(ellipse 400px 300px at 70% 100%, rgba(230,128,179,0.05) 0%, transparent 70%);
         }
 
         .container {
@@ -181,7 +197,8 @@
         }
 
         .feature-card {
-            background: var(--surface);
+            background: rgba(38, 38, 38, 0.8);
+            backdrop-filter: blur(20px);
             padding: 2.5rem;
             border-radius: 24px;
             border: 1px solid var(--border);
@@ -197,15 +214,15 @@
             left: 0;
             right: 0;
             height: 3px;
-            background: var(--gradient);
+            background: var(--gradient-primary);
             transform: scaleX(0);
             transition: transform 0.3s ease;
         }
 
         .feature-card:hover {
             transform: translateY(-8px);
-            border-color: var(--primary);
-            box-shadow: 0 20px 60px rgba(0,122,255,0.1);
+            border-color: var(--focus-purple);
+            box-shadow: 0 20px 60px rgba(153,102,230,0.15);
         }
 
         .feature-card:hover::before {
@@ -215,13 +232,14 @@
         .feature-icon {
             width: 60px;
             height: 60px;
-            background: var(--gradient);
+            background: var(--gradient-primary);
             border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-bottom: 1.5rem;
             font-size: 24px;
+            box-shadow: 0 8px 24px rgba(153,102,230,0.3);
         }
 
         .feature-card h3 {
@@ -239,7 +257,10 @@
         /* Screenshots Section */
         .screenshots-section {
             padding: 8rem 2rem;
-            background: var(--bg-primary);
+            background: 
+                linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-secondary) 50%, var(--bg-primary) 100%),
+                radial-gradient(ellipse 500px 300px at 80% 20%, rgba(153,102,230,0.04) 0%, transparent 70%),
+                radial-gradient(ellipse 400px 200px at 20% 80%, rgba(77,153,230,0.04) 0%, transparent 70%);
         }
 
         .screenshots-grid {
@@ -250,16 +271,20 @@
         }
 
         .screenshot-card {
-            background: var(--surface);
+            background: rgba(38, 38, 38, 0.6);
+            backdrop-filter: blur(20px);
             border-radius: 20px;
             overflow: hidden;
             border: 1px solid var(--border);
             transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
         }
 
         .screenshot-card:hover {
             transform: translateY(-10px);
-            box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+            box-shadow: 
+                0 25px 80px rgba(0,0,0,0.4),
+                0 0 0 1px rgba(153,102,230,0.2);
         }
 
         .screenshot-card img {
@@ -271,8 +296,22 @@
         /* CTA Section */
         .cta-section {
             padding: 8rem 2rem;
-            background: var(--bg-secondary);
+            background: 
+                linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%),
+                radial-gradient(ellipse 800px 400px at 50% 50%, rgba(230,128,179,0.08) 0%, transparent 70%);
             text-align: center;
+            position: relative;
+        }
+        
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><circle cx="150" cy="150" r="1" fill="%239966E6" opacity="0.3"/><circle cx="850" cy="200" r="1.5" fill="%23E680B3" opacity="0.2"/><circle cx="300" cy="800" r="1" fill="%234D99E6" opacity="0.4"/><circle cx="750" cy="750" r="1" fill="%239966E6" opacity="0.3"/></svg>') center/cover;
+            pointer-events: none;
         }
 
         .cta-content {
