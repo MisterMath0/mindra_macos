@@ -115,4 +115,4 @@ iOSInjectionProject/
 *.framework
 
 # DMG files in root directory
-MindraTimer.dmg
+/MindraTimer.dmg
