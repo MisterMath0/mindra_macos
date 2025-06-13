@@ -1,0 +1,38 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.4'
+
+      - name: Build App
+        run: |
+          xcodebuild -scheme MindraTimer -configuration Release -archivePath build/MindraTimer.xcarchive archive
+          xcodebuild -exportArchive -archivePath build/MindraTimer.xcarchive -exportPath build/MindraTimer -exportOptionsPlist exportOptions.plist
+
+      - name: Create DMG
+        run: |
+          TEMP_DMG_DIR="temp_dmg"
+          mkdir -p "$TEMP_DMG_DIR"
+          cp -R "build/MindraTimer.xcarchive/Products/Applications/MindraTimer.app" "$TEMP_DMG_DIR/"
+          hdiutil create -volname "MindraTimer" -srcfolder "$TEMP_DMG_DIR" -ov -format UDZO "MindraTimer.dmg"
+          rm -rf "$TEMP_DMG_DIR"
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
+          commit_message: "Deploy MindraTimer v${{ github.sha }}" 
