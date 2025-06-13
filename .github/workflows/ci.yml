@@ -22,7 +22,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          xcode-version: '15.2'
 
       - name: Build for testing
         run: |
@@ -30,7 +30,8 @@ jobs:
             -scheme "$SCHEME_NAME" \
             -project "$APP_NAME.xcodeproj" \
             -configuration Debug \
-            -derivedDataPath build/
+            -derivedDataPath build/ \
+            -verbose
 
       - name: Run tests
         run: |
@@ -39,7 +40,8 @@ jobs:
             -project "$APP_NAME.xcodeproj" \
             -configuration Debug \
             -derivedDataPath build/ \
-            -destination 'platform=macOS'
+            -destination 'platform=macOS' \
+            -verbose
         continue-on-error: true
 
       - name: Build for release (validation)
@@ -48,4 +50,5 @@ jobs:
             -scheme "$SCHEME_NAME" \
             -project "$APP_NAME.xcodeproj" \
             -configuration Release \
-            -derivedDataPath build/
+            -derivedDataPath build/ \
+            -verbose

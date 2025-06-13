@@ -22,8 +22,6 @@ You can also trigger releases manually from the GitHub Actions tab.
 
 ## Downloads
 
-Visit the [Releases page](https://github.com/YOUR_USERNAME/MindraTimer/releases) to download the latest DMG.
+Visit the [Releases page](https://github.com/MisterMath0/MindraTimer/releases) to download the latest DMG.
 
----
-
-*Replace YOUR_USERNAME with your GitHub username*
+--
