@@ -187,4 +187,4 @@ class BaseRepository<T> {
     func mapRow(_ row: [String: Any]) throws -> T {
         fatalError("mapRow must be implemented by subclasses")
     }
-} 
+}
