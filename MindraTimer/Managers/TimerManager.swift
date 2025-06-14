@@ -403,6 +403,13 @@ class TimerManager: ObservableObject {
     }
     
     private func shouldAutoStartNext() -> Bool {
+        // First check if auto-start is enabled globally
+        guard let statsManager = statsManager,
+              statsManager.settings.autoStartTimer else {
+            return false
+        }
+        
+        // Then check specific mode settings
         switch currentMode {
         case .focus:
             return sessionConfiguration.autoStartBreaks
