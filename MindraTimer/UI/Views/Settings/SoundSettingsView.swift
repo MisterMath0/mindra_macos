@@ -11,6 +11,7 @@ import SwiftUI
 struct SoundSettingsView: View {
     @ObservedObject var coordinator: SettingsCoordinator
     @EnvironmentObject var statsManager: StatsManager
+    @EnvironmentObject var notificationService: NotificationService
     
     @State private var showSoundPreview = false
     
@@ -141,6 +142,63 @@ struct SoundSettingsView: View {
                                 set: { coordinator.updateShowNotificationsInMenuBar($0, statsManager: statsManager) }
                             ),
                             description: "Display notification badges and alerts in the menu bar for quick access to session updates."
+                        )
+                    }
+                }
+                
+                // Enhanced Notification Settings
+                VStack(spacing: 16) {
+                    SectionHeader(
+                        title: "Enhanced Notifications",
+                        subtitle: "Rich in-app notifications and celebrations",
+                        icon: "bell.badge.fill",
+                        color: AppColors.warningColor
+                    )
+                    
+                    VStack(spacing: 12) {
+                        ModernToggleCard(
+                            title: "In-App Banners",
+                            subtitle: "Show notification banners within the app",
+                            icon: "rectangle.badge.checkmark",
+                            color: AppColors.successColor,
+                            isOn: $notificationService.enableInAppBanners,
+                            description: "Display elegant notification banners when sessions complete and achievements unlock."
+                        )
+                        
+                        ModernToggleCard(
+                            title: "Achievement Celebrations",
+                            subtitle: "Celebrate when you unlock achievements",
+                            icon: "trophy.fill",
+                            color: AppColors.warningColor,
+                            isOn: $notificationService.enableAchievementCelebrations,
+                            description: "Show special celebration animations when you reach new milestones."
+                        )
+                        
+                        ModernToggleCard(
+                            title: "Milestone Progress",
+                            subtitle: "Get notified about achievement progress",
+                            icon: "target",
+                            color: AppColors.infoColor,
+                            isOn: $notificationService.enableMilestoneNotifications,
+                            description: "Receive notifications when you're close to unlocking achievements."
+                        )
+                        
+                        ModernToggleCard(
+                            title: "Streak Reminders",
+                            subtitle: "Gentle reminders to maintain streaks",
+                            icon: "flame.fill",
+                            color: AppColors.focusColor,
+                            isOn: $notificationService.enableStreakReminders,
+                            description: "Get reminded in the evening to maintain your focus streak."
+                        )
+                        
+                        ModernToggleCard(
+                            title: "Encouragement Messages",
+                            subtitle: "Motivational messages to keep you going",
+                            icon: "hand.thumbsup.fill",
+                            color: AppColors.shortBreakColor,
+                            isOn: $notificationService.enableEncouragementMessages,
+                            description: "Receive inspiring messages to boost your productivity."
                         )
                     }
                 }

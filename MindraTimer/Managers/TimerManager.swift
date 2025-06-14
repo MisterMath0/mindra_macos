@@ -22,6 +22,7 @@ class TimerManager: ObservableObject {
     private var statsManager: StatsManager?
     private var audioService: AudioServiceProtocol?
     private var analyticsService: AnalyticsServiceProtocol?
+    private var notificationService: NotificationServiceProtocol?
     
     // MARK: - Private State
     private var timer: Timer?
@@ -57,6 +58,10 @@ class TimerManager: ObservableObject {
     
     func setAnalyticsService(_ analyticsService: AnalyticsServiceProtocol) {
         self.analyticsService = analyticsService
+    }
+    
+    func setNotificationService(_ notificationService: NotificationServiceProtocol) {
+        self.notificationService = notificationService
     }
     
     // MARK: - Public Timer Actions
@@ -327,6 +332,13 @@ class TimerManager: ObservableObject {
         
         // Complete session tracking
         endCurrentSession(completed: true)
+        
+        // Trigger notification for session completion
+        notificationService?.handleSessionComplete(
+            mode: currentMode, 
+            duration: totalDuration, 
+            completed: true
+        )
         
         // Play completion sound
         playCompletionSound()

@@ -128,6 +128,7 @@ struct MindraSettingsView: View {
     @EnvironmentObject var appModeManager: AppModeManager
     @EnvironmentObject var quotesManager: QuotesManager
     @EnvironmentObject var greetingManager: GreetingManager
+    @EnvironmentObject var notificationService: NotificationService
     @EnvironmentObject var navigationManager: AppNavigationManager
     
     @StateObject private var coordinator = SettingsCoordinator()
@@ -157,6 +158,7 @@ struct MindraSettingsView: View {
                     .environmentObject(appModeManager)
                     .environmentObject(quotesManager)
                     .environmentObject(greetingManager)
+                    .environmentObject(notificationService)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -427,6 +429,7 @@ struct SettingsDetailView: View {
     @EnvironmentObject var appModeManager: AppModeManager
     @EnvironmentObject var quotesManager: QuotesManager
     @EnvironmentObject var greetingManager: GreetingManager
+    @EnvironmentObject var notificationService: NotificationService
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -439,8 +442,9 @@ struct SettingsDetailView: View {
                 ClockSettingsView(coordinator: coordinator)
                     .environmentObject(statsManager)
             case .sounds:
-                SoundSettingsView(coordinator: coordinator)
-                    .environmentObject(statsManager)
+                    SoundSettingsView(coordinator: coordinator)
+                        .environmentObject(statsManager)
+                        .environmentObject(notificationService)
             case .stats:
                 StatsSettingsView(coordinator: coordinator)
                     .environmentObject(statsManager)

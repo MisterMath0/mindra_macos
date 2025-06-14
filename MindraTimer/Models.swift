@@ -524,6 +524,13 @@ struct AppSettings: Codable {
     var showTimeInTitle: Bool
     var minimizeToTray: Bool
     
+    // Enhanced notification settings
+    var enableInAppBanners: Bool
+    var enableMilestoneNotifications: Bool
+    var enableAchievementCelebrations: Bool
+    var enableStreakReminders: Bool
+    var enableEncouragementMessages: Bool
+    
     static let `default` = AppSettings(
         sessionConfiguration: SessionConfiguration.default,
         autoStartTimer: true,
@@ -555,7 +562,14 @@ struct AppSettings: Codable {
         showNotificationsInMenuBar: true,
         preventScreenSleep: true,
         showTimeInTitle: true,
-        minimizeToTray: true
+        minimizeToTray: true,
+        
+        // Enhanced notification settings
+        enableInAppBanners: true,
+        enableMilestoneNotifications: true,
+        enableAchievementCelebrations: true,
+        enableStreakReminders: true,
+        enableEncouragementMessages: true
     )
 }
 
@@ -598,5 +612,56 @@ struct UserPreferences: Codable {
         self.enablePersonalization = true
         self.preferredGreetingStyle = .casual
         self.customQuotes = []
+    }
+}
+
+// MARK: - Enhanced Notification Models
+
+enum NotificationBannerType: String, CaseIterable, Codable {
+    case sessionComplete = "session_complete"
+    case achievementUnlocked = "achievement_unlocked"
+    case milestone = "milestone"
+    case streakReminder = "streak_reminder"
+    case encouragement = "encouragement"
+    
+    var color: Color {
+        switch self {
+        case .sessionComplete: return AppColors.successColor
+        case .achievementUnlocked: return AppColors.warningColor
+        case .milestone: return AppColors.infoColor
+        case .streakReminder: return AppColors.focusColor
+        case .encouragement: return AppColors.shortBreakColor
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .sessionComplete: return "checkmark.circle.fill"
+        case .achievementUnlocked: return "trophy.fill"
+        case .milestone: return "target"
+        case .streakReminder: return "flame.fill"
+        case .encouragement: return "hand.thumbsup.fill"
+        }
+    }
+}
+
+struct NotificationBanner: Identifiable, Codable {
+    let id = UUID()
+    let type: NotificationBannerType
+    let title: String
+    let message: String
+    let timestamp: Date
+    var isRead: Bool
+    let actionText: String?
+    let actionIdentifier: String?
+    
+    init(type: NotificationBannerType, title: String, message: String, actionText: String? = nil, actionIdentifier: String? = nil) {
+        self.type = type
+        self.title = title
+        self.message = message
+        self.timestamp = Date()
+        self.isRead = false
+        self.actionText = actionText
+        self.actionIdentifier = actionIdentifier
     }
 }

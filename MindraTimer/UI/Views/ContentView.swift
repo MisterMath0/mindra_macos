@@ -17,6 +17,7 @@ struct ContentView: View {
     @EnvironmentObject var quotesManager: QuotesManager
     @EnvironmentObject var greetingManager: GreetingManager
     @EnvironmentObject var audioService: AudioService
+    @EnvironmentObject var notificationService: NotificationService
     
     @State private var showSoundPicker = false
     
@@ -46,12 +47,20 @@ struct ContentView: View {
                             .environmentObject(quotesManager)
                             .environmentObject(greetingManager)
                             .environmentObject(navigationManager)
+                            .environmentObject(notificationService)
                     } else {
                         fullScreenView(geometry: geometry)
-                            .transition(.asymmetric(
-                                insertion: .scale(scale: 1.1).combined(with: .opacity),
-                                removal: .scale(scale: 0.8).combined(with: .opacity)
-                            ))
+                        .transition(.asymmetric(
+                        insertion: .scale(scale: 1.1).combined(with: .opacity),
+                        removal: .scale(scale: 0.8).combined(with: .opacity)
+                        ))
+                        .overlay(
+                            // Notification banner overlay
+                            NotificationBannerOverlay(
+                                notificationService: notificationService,
+                                onAction: handleNotificationAction
+                            )
+                        )
                     }
                 }
             }
@@ -657,6 +666,38 @@ struct ContentView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMMM d"
         return formatter.string(from: Date())
+    }
+    
+    // MARK: - Notification Action Handling
+    
+    private func handleNotificationAction(_ actionIdentifier: String) {
+        switch actionIdentifier {
+        case "start_next_session":
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                if timerManager.currentMode == .focus {
+                    // After focus, start break
+                    let nextMode: TimerMode = timerManager.sessionsCompleted % 4 == 0 ? .longBreak : .shortBreak
+                    timerManager.setMode(nextMode)
+                } else {
+                    // After break, start focus
+                    timerManager.setMode(.focus)
+                }
+                timerManager.startTimer()
+            }
+        case "start_focus_session":
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                appModeManager.setMode(.pomodoro)
+                timerManager.setMode(.focus)
+                timerManager.startTimer()
+            }
+        case "view_achievements":
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                navigationManager.navigateTo(.settings)
+                // Navigate to stats section in settings
+            }
+        default:
+            break
+        }
     }
 }
 

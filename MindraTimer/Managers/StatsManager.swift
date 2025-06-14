@@ -30,18 +30,32 @@ class StatsManager: ObservableObject {
     @Published private(set) var achievements: [Achievement] = []
     
     let database: DatabaseManager  // Made public for debugging
+    private let notificationService: NotificationServiceProtocol
     private var currentSessionId: String?
     private var sessionStartTime: Date?
     
     init() {
         self.database = DatabaseManager.shared  // Use singleton instead
         self.settingsManager = SettingsManager()
+        self.notificationService = NotificationService()
         
         // Load existing data
         fetchStats(for: settingsManager.displayPeriod)
         loadAchievements()
         
         print("📊 Stats Manager initialized")
+    }
+    
+    init(notificationService: NotificationServiceProtocol) {
+        self.database = DatabaseManager.shared
+        self.settingsManager = SettingsManager()
+        self.notificationService = notificationService
+        
+        // Load existing data
+        fetchStats(for: settingsManager.displayPeriod)
+        loadAchievements()
+        
+        print("📊 Stats Manager initialized with notification service")
     }
     
     // MARK: - Computed Properties for easy access
@@ -262,7 +276,9 @@ class StatsManager: ObservableObject {
                     achievement.unlocked = true
                     achievement.unlockedDate = Date()
                     print("🎉 Achievement unlocked: \(achievement.title)")
-                    // TODO: Show achievement unlocked notification
+                    
+                    // Trigger notification for achievement unlock
+                    notificationService.handleAchievementUnlocked(achievement)
                 }
                 
                 if database.updateAchievement(achievement) {
