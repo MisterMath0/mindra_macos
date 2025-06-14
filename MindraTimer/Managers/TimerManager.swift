@@ -359,18 +359,19 @@ class TimerManager: ObservableObject {
     private func completeCurrentCycle() {
         let wasInFocus = currentMode == .focus
         
-        // Update sessions completed for focus sessions
+        // Update sessions completed for focus sessions IMMEDIATELY
         if wasInFocus {
-            // DON'T increment locally - wait for database sync
-            // sessionsCompleted will be updated after database write
+            // Increment session count immediately for UI responsiveness
+            sessionsCompleted += 1
+            print("📊 Session count updated immediately: \(sessionsCompleted)")
             
-            // Refresh session count from database after completion
+            // Also sync from database after a short delay for accuracy
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.syncSessionsFromDatabase()
             }
         }
         
-        // Determine next mode
+        // Determine next mode using the updated session count
         let nextMode = determineNextMode()
         
         // Update timer state
@@ -380,24 +381,32 @@ class TimerManager: ObservableObject {
         isPaused = false
         currentMode = nextMode
         totalDuration = newDuration
+        
+        print("🔄 Cycle completed: \(wasInFocus ? "FOCUS" : "BREAK") → \(nextMode.displayName)")
     }
     
     private func determineNextMode() -> TimerMode {
         switch currentMode {
         case .focus:
             // After focus, decide between short and long break
-            // We need to get the actual completed sessions count from the database
+            // Get the actual completed focus sessions count from database
             let actualSessionsCompleted = statsManager?.getSessionsToday() ?? sessionsCompleted
             let sessionsBeforeLongBreak = sessionConfiguration.sessionsUntilLongBreak
             
-            // Check if it's time for a long break
+            print("🔄 Determining next mode: completed=\(actualSessionsCompleted), threshold=\(sessionsBeforeLongBreak)")
+            
+            // Check if it's time for a long break (every N focus sessions)
+            // Long break after every 4th focus session: session 4, 8, 12, etc.
             if actualSessionsCompleted > 0 && actualSessionsCompleted % sessionsBeforeLongBreak == 0 {
+                print("✅ Time for LONG BREAK after \(actualSessionsCompleted) sessions")
                 return .longBreak
             } else {
+                print("✅ Time for SHORT BREAK after \(actualSessionsCompleted) sessions")
                 return .shortBreak
             }
         case .shortBreak, .longBreak:
             // After any break, return to focus
+            print("✅ Returning to FOCUS after break")
             return .focus
         }
     }
@@ -435,16 +444,21 @@ class TimerManager: ObservableObject {
         // Calculate actual duration based on time elapsed
         let actualDuration = Int(Date().timeIntervalSince(startTime))
         
-        // Only save to database if this was a focus session
-        if currentMode == .focus {
+        // Only save COMPLETED focus sessions to database
+        // Skip saving incomplete sessions to avoid polluting the database
+        if currentMode == .focus && completed {
             statsManager?.completeSession(
                 sessionId: sessionId,
                 mode: currentMode,
                 duration: actualDuration,
                 completed: completed
             )
+            print("💾 Completed focus session saved to database")
+        } else if currentMode == .focus && !completed {
+            // For skipped focus sessions, just log but don't save to database
+            print("⏭️ Focus session skipped - NOT saved to database")
         } else {
-            // For breaks, just log but don't save to database
+            // For breaks, just log but don't save to database  
             print("🏖️ Break session ended: \(currentMode.displayName)")
         }
         
@@ -521,9 +535,12 @@ class TimerManager: ObservableObject {
         let todaysSessions = statsManager.getSessionsToday()
         
         // Update sessions completed to match database
+        let previousCount = sessionsCompleted
         sessionsCompleted = todaysSessions
         
-        print("🔄 Synced sessions from database: \(sessionsCompleted) sessions today")
+        if previousCount != sessionsCompleted {
+            print("🔄 Session count synced from database: \(previousCount) → \(sessionsCompleted)")
+        }
     }
     
     // MARK: - Computed Properties
