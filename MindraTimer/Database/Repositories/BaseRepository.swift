@@ -22,8 +22,9 @@ class BaseRepository<T> {
     }
     
     func executeQuery(_ query: String, params: [Any] = []) throws -> [[String: Any]] {
-        var statement: OpaquePointer?
-        var results: [[String: Any]] = []
+        return try connection.performSync {
+            var statement: OpaquePointer?
+            var results: [[String: Any]] = []
         
         do {
             statement = try connection.prepareStatement(query)
@@ -111,10 +112,12 @@ class BaseRepository<T> {
         } catch {
             throw DatabaseError.queryFailed("Failed to execute query: \(error.localizedDescription)")
         }
+        }
     }
     
     func executeUpdate(_ query: String, params: [Any] = []) throws {
-        var statement: OpaquePointer?
+        try connection.performSync {
+            var statement: OpaquePointer?
         
         do {
             statement = try connection.prepareStatement(query)
@@ -177,6 +180,7 @@ class BaseRepository<T> {
             } else {
                 throw DatabaseError.queryFailed("Failed to execute update: \(error.localizedDescription)")
             }
+        }
         }
     }
     

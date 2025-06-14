@@ -316,8 +316,8 @@ class StatsManager: ObservableObject {
     }
     
     func completeSession(sessionId: String, mode: TimerMode, duration: Int, completed: Bool) {
-        // Ensure database operations happen on main thread
-        DispatchQueue.main.async { [weak self] in
+        // Use background queue for database operations (thread-safe now)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self,
                   let startTime = self.sessionStartTime else {
                 print("❌ No start time found for session completion")
@@ -339,20 +339,10 @@ class StatsManager: ObservableObject {
             print("💾 Session saved: \(success ? "✅" : "❌") - \(mode.displayName), completed: \(completed)")
             
             if success {
-                // Clear session tracking
-                self.currentSessionId = nil
-                self.sessionStartTime = nil
-                
-                // Refresh stats
-                self.fetchStats(for: self.settingsManager.displayPeriod)
-                
                 // Update session completion
                 if self.database.updateSessionCompletion(sessionId: sessionId, completed: completed) {
                     // Update achievements based on session completion
                     if completed && mode == .focus {
-                        // Increment sessions completed count in database
-                        self.incrementSessionsCompleted()
-                        
                         // Update focus time achievement (accumulate total time)
                         self.updateAchievementProgress(type: .totalFocusTime, progress: Double(duration) / 60.0)
                         
@@ -366,6 +356,16 @@ class StatsManager: ObservableObject {
                         
                         print("📊 Achievement progress updated for completed focus session")
                     }
+                }
+                
+                // Update UI on main thread
+                DispatchQueue.main.async {
+                    // Clear session tracking
+                    self.currentSessionId = nil
+                    self.sessionStartTime = nil
+                    
+                    // Refresh stats
+                    self.fetchStats(for: self.settingsManager.displayPeriod)
                 }
             }
         }
@@ -394,20 +394,28 @@ class StatsManager: ObservableObject {
     func fetchStats(for period: StatsPeriod) {
         isLoading = true
         
-        DispatchQueue.global(qos: .background).async { [weak self] in
+        // All database operations are now thread-safe via the serial queue
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
             
-            let fetchedSessions = self.database.getSessions(for: period)
-            let newSummary = self.database.calculateSummary(for: fetchedSessions)
-            let newChartData = self.database.generateChartData(for: fetchedSessions, period: period)
-            
-            DispatchQueue.main.async {
-                self.sessions = fetchedSessions
-                self.summary = newSummary
-                self.chartData = newChartData
-                self.isLoading = false
+            do {
+                let fetchedSessions = self.database.getSessions(for: period)
+                let newSummary = self.database.calculateSummary(for: fetchedSessions)
+                let newChartData = self.database.generateChartData(for: fetchedSessions, period: period)
                 
-                print("📊 Stats updated: \(fetchedSessions.count) sessions, \(newSummary.currentStreak) day streak")
+                DispatchQueue.main.async {
+                    self.sessions = fetchedSessions
+                    self.summary = newSummary
+                    self.chartData = newChartData
+                    self.isLoading = false
+                    
+                    print("📊 Stats updated: \(fetchedSessions.count) sessions, \(newSummary.currentStreak) day streak")
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    print("❌ Failed to fetch stats: \(error.localizedDescription)")
+                }
             }
         }
     }
