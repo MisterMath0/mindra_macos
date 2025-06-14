@@ -35,7 +35,7 @@ struct TimerSettingsView: View {
                                 title: "Focus Duration",
                                 icon: "brain.head.profile",
                                 value: timerManager.focusDuration / 60,
-                                range: 5...90,
+                                range: 1...90,
                                 color: AppColors.focusColor
                             ) { newValue in
                                 timerManager.updateDuration(for: .focus, minutes: newValue)
@@ -45,7 +45,7 @@ struct TimerSettingsView: View {
                                 title: "Short Break",
                                 icon: "cup.and.saucer.fill",
                                 value: timerManager.shortBreakDuration / 60,
-                                range: 3...30,
+                                range: 1...30,
                                 color: AppColors.shortBreakColor
                             ) { newValue in
                                 timerManager.updateDuration(for: .shortBreak, minutes: newValue)
@@ -55,7 +55,7 @@ struct TimerSettingsView: View {
                                 title: "Long Break",
                                 icon: "moon.stars.fill",
                                 value: timerManager.longBreakDuration / 60,
-                                range: 10...60,
+                                range: 1...60,
                                 color: AppColors.longBreakColor
                             ) { newValue in
                                 timerManager.updateDuration(for: .longBreak, minutes: newValue)
