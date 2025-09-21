@@ -8,11 +8,6 @@
 import Foundation
 import SQLite3
 
-// MARK: - Uses Models from Models.swift
-// All data models are defined in Models.swift to avoid duplication
-
-// MARK: - Database Manager
-
 class DatabaseManager: ObservableObject {
     static let shared = DatabaseManager()
     
@@ -21,17 +16,25 @@ class DatabaseManager: ObservableObject {
     private let sessionRepository: SessionRepository
     private let achievementRepository: AchievementRepository
     private let settingsRepository: SettingsRepository
-    private let debugger: DatabaseDebugger
-    
+
     init() {
-        // Create database in Documents directory
-        let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
-        dbPath = "\(documentsPath)/mindra_timer.sqlite"
+        // Preferred: Application Support directory
+        let fm = FileManager.default
+        let appSupport = try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let appDir = appSupport?.appendingPathComponent("MindraTimer", isDirectory: true)
+        if let appDir = appDir {
+            if !fm.fileExists(atPath: appDir.path) {
+                try? fm.createDirectory(at: appDir, withIntermediateDirectories: true)
+            }
+            dbPath = appDir.appendingPathComponent("mindra_timer.sqlite").path
+        } else {
+            // Fallback to Documents if Application Support cannot be resolved
+            let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
+            dbPath = "\(documentsPath)/mindra_timer.sqlite"
+        }
         
-        // Initialize connection and repositories
         connection = DatabaseConnection(dbPath: dbPath)
         
-        // CRITICAL: Establish database connection
         do {
             try connection.connect()
             print("✅ Database connected successfully at: \(dbPath)")
@@ -42,18 +45,12 @@ class DatabaseManager: ObservableObject {
         sessionRepository = SessionRepository(connection: connection)
         achievementRepository = AchievementRepository(connection: connection)
         settingsRepository = SettingsRepository(connection: connection)
-        debugger = DatabaseDebugger(connection: connection)
         
-        // Create tables if they don't exist
         createTables()
         
-        // Print initial debug info
-        print("📊 Initial Database State:")
-        print(debugger.getDebugInfo())
     }
     
     private func createTables() {
-        // Create focus_sessions table
         let createSessionsTable = """
             CREATE TABLE IF NOT EXISTS focus_sessions (
                 id TEXT PRIMARY KEY,
@@ -67,7 +64,6 @@ class DatabaseManager: ObservableObject {
             );
         """
         
-        // Create achievements table
         let createAchievementsTable = """
             CREATE TABLE IF NOT EXISTS achievements (
                 id TEXT PRIMARY KEY,
@@ -83,7 +79,6 @@ class DatabaseManager: ObservableObject {
             );
         """
         
-        // Create settings table
         let createSettingsTable = """
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
@@ -92,7 +87,6 @@ class DatabaseManager: ObservableObject {
             );
         """
         
-        // Execute table creation with detailed error handling
         do {
             try connection.execute(createSessionsTable)
             print("✅ Sessions table created successfully")
@@ -114,7 +108,6 @@ class DatabaseManager: ObservableObject {
             print("❌ Error creating settings table: \(error.localizedDescription)")
         }
         
-        // Create indexes for better performance
         let createIndexes = """
             CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON focus_sessions(started_at);
             CREATE INDEX IF NOT EXISTS idx_sessions_mode ON focus_sessions(mode);
@@ -140,13 +133,10 @@ class DatabaseManager: ObservableObject {
             return true
         } catch {
             print("❌ Failed to save session: \(error.localizedDescription)")
-            // Debug: Show exact SQL error
-            if let dbError = error as? DatabaseError {
-                print("🔍 SQL Debug: \(dbError.localizedDescription)")
-                if let db = connection.getDatabasePointer() {
-                    let sqliteError = String(cString: sqlite3_errmsg(db))
-                    print("🔍 SQLite Error: \(sqliteError)")
-                }
+            if let db = connection.getDatabasePointer() {
+                let sqliteError = String(cString: sqlite3_errmsg(db))
+                let code = sqlite3_errcode(db)
+                print("🔍 SQLite Error \(code): \(sqliteError)")
             }
             return false
         }
@@ -236,48 +226,29 @@ class DatabaseManager: ObservableObject {
             return defaultValue
         }
     }
+
     
-    // MARK: - Debug and Maintenance Methods
-    
-    func getDebugInfo() -> String {
-        return debugger.getDebugInfo()
-    }
-    
-    func testDatabase() -> String {
-        return debugger.testBasicOperations()
-    }
-    
-    func runComprehensiveTest() {
-        DatabaseTester.runComprehensiveTest()
-    }
-    
-    // MARK: - IMMEDIATE FIX METHOD - Run this now!
+    // MARK: - IMMEDIATE FIX METHOD
     
     func fixDatabaseIssuesNow() {
         print("🚑 EMERGENCY DATABASE FIX STARTING...")
         print(String(repeating: "🔄", count: 20))
         
-        // Step 1: Purge UserDefaults
         print("\n1. PURGING USERDEFAULTS SESSION DATA:")
         purgeAllUserDefaultsSessionData()
         
-        // Step 2: Diagnose current state
         print("\n2. DIAGNOSING CURRENT ISSUES:")
         diagnoseDatabaseIssues()
         
-        // Step 3: Nuclear reset
         print("\n3. PERFORMING NUCLEAR RESET:")
         resetDatabaseForDevelopment()
         
-        // Step 4: Test basic functionality
         print("\n4. TESTING BASIC FUNCTIONALITY:")
         diagnoseDatabaseIssues()
         
-        // Step 5: Initialize default data
         print("\n5. INITIALIZING DEFAULT DATA:")
         initializeDefaultData()
         
-        // Step 6: Final verification
         print("\n6. FINAL VERIFICATION:")
         let isWorking = verifyDatabaseIntegrity()
         
@@ -293,21 +264,14 @@ class DatabaseManager: ObservableObject {
         print(String(repeating: "🔄", count: 20))
     }
     
-    // MARK: - Verification Methods
-    
     func verifyDatabaseIntegrity() -> Bool {
-        // Quick verification that database is working
         do {
-            // Test connection
             guard connection.getDatabasePointer() != nil else {
                 print("❌ Database connection is nil")
                 return false
             }
-            
-            // Test basic query
             let sessions = try sessionRepository.getSessions(for: .day)
             print("✅ Database verification passed - found \(sessions.count) sessions today")
-            
             return true
         } catch {
             print("❌ Database verification failed: \(error.localizedDescription)")
@@ -324,37 +288,27 @@ class DatabaseManager: ObservableObject {
             return
         }
         
-        // 1. Check if database file exists
         let fileManager = FileManager.default
         print("📁 Database file exists: \(fileManager.fileExists(atPath: dbPath))")
-        
         if let attributes = try? fileManager.attributesOfItem(atPath: dbPath) {
             let size = attributes[.size] as? Int64 ?? 0
             print("📁 Database file size: \(size) bytes")
         }
         
-        // 2. Debug UserDefaults (this might be where the real data is!)
         print("🔍 CHECKING USERDEFAULTS:")
         let userDefaults = UserDefaults.standard
-        
-        // Common keys that might store session data
         let possibleKeys = [
             "focusSessions", "sessionsCompleted", "totalSessions",
             "pomodorosCycles", "pomodoroCycles", "cyclesCompleted",
             "totalFocusTime", "completedSessions", "streakCount"
         ]
-        
         for key in possibleKeys {
-            let value = userDefaults.object(forKey: key)
-            if value != nil {
-                print("✅ UserDefaults[\(key)] = \(value!)")
+            if let value = userDefaults.object(forKey: key) {
+                print("✅ UserDefaults[\(key)] = \(value)")
             }
         }
         
-        // 3. Test basic SQLite operations
         var statement: OpaquePointer?
-        
-        // Test table creation
         let testTableSQL = "CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT);"
         if sqlite3_exec(db, testTableSQL, nil, nil, nil) == SQLITE_OK {
             print("✅ Basic table creation: OK")
@@ -363,7 +317,6 @@ class DatabaseManager: ObservableObject {
             print("❌ Basic table creation: FAILED - \(error)")
         }
         
-        // Test insert
         let insertSQL = "INSERT INTO test_table (name) VALUES (?);"
         if sqlite3_prepare_v2(db, insertSQL, -1, &statement, nil) == SQLITE_OK {
             sqlite3_bind_text(statement, 1, "test", -1, nil)
@@ -379,7 +332,6 @@ class DatabaseManager: ObservableObject {
             print("❌ Basic insert prepare: FAILED - \(error)")
         }
         
-        // Test select
         let selectSQL = "SELECT COUNT(*) FROM test_table;"
         if sqlite3_prepare_v2(db, selectSQL, -1, &statement, nil) == SQLITE_OK {
             if sqlite3_step(statement) == SQLITE_ROW {
@@ -395,7 +347,6 @@ class DatabaseManager: ObservableObject {
             print("❌ Basic select prepare: FAILED - \(error)")
         }
         
-        // 4. Check our actual tables
         let tables = ["focus_sessions", "achievements", "settings"]
         for table in tables {
             let checkSQL = "SELECT COUNT(*) FROM \(table);"
@@ -414,7 +365,6 @@ class DatabaseManager: ObservableObject {
             }
         }
         
-        // 5. Check table schemas
         for table in tables {
             print("📁 Schema for \(table):")
             let schemaSQL = "PRAGMA table_info(\(table));"
@@ -428,11 +378,6 @@ class DatabaseManager: ObservableObject {
             }
         }
         
-        // 6. Check what StatsManager is actually using
-        print("🔍 CHECKING STATSMANAGER STATE:")
-        // This will help us see if StatsManager has its own data source
-        
-        // Clean up test table
         sqlite3_exec(db, "DROP TABLE IF EXISTS test_table;", nil, nil, nil)
         
         print(String(repeating: "=", count: 50))
@@ -442,59 +387,43 @@ class DatabaseManager: ObservableObject {
     
     func clearAllData() {
         do {
-            // Delete all sessions
             let sessions = try sessionRepository.getSessions(for: .all)
             for session in sessions {
                 try sessionRepository.delete(id: session.id)
             }
-            
-            // Delete all achievements
             let achievements = try achievementRepository.getAllAchievements()
             for achievement in achievements {
                 try achievementRepository.delete(id: achievement.id.uuidString)
             }
-            
-            // Clear all settings
             try settingsRepository.clearAllSettings()
-            
             print("🗑️ Database cleared")
         } catch {
             print("❌ Failed to clear database: \(error.localizedDescription)")
         }
     }
     
-    // MARK: - Development utilities
-    
     func resetDatabaseForDevelopment() {
         print("🔄 Resetting database for development...")
-        
-        // NUCLEAR OPTION: Delete the entire database file
+        let fileManager = FileManager.default
         do {
-            let fileManager = FileManager.default
             if fileManager.fileExists(atPath: dbPath) {
                 try fileManager.removeItem(atPath: dbPath)
                 print("💥 Database file deleted: \(dbPath)")
             }
-            
-            // Also delete WAL and SHM files
             let walPath = dbPath + "-wal"
             let shmPath = dbPath + "-shm"
-            
             if fileManager.fileExists(atPath: walPath) {
                 try fileManager.removeItem(atPath: walPath)
                 print("💥 WAL file deleted")
             }
-            
             if fileManager.fileExists(atPath: shmPath) {
                 try fileManager.removeItem(atPath: shmPath)
                 print("💥 SHM file deleted")
             }
-            
         } catch {
             print("❌ Failed to delete database files: \(error.localizedDescription)")
         }
         
-        // Disconnect and reconnect to create fresh database
         connection.disconnect()
         
         do {
@@ -504,18 +433,13 @@ class DatabaseManager: ObservableObject {
             print("❌ Failed to reconnect: \(error.localizedDescription)")
         }
         
-        // Recreate tables with fresh schema
         createTables()
-        
         print("✅ Database completely reset - pristine state")
     }
     
     func purgeAllUserDefaultsSessionData() {
         print("🧽 PURGING ALL USERDEFAULTS SESSION DATA...")
-        
         let userDefaults = UserDefaults.standard
-        
-        // List of ALL possible session-related keys to remove
         let sessionKeys = [
             "focusSessions", "sessionsCompleted", "totalSessions",
             "pomodorosCycles", "pomodoroCycles", "cyclesCompleted",
@@ -524,82 +448,35 @@ class DatabaseManager: ObservableObject {
             "completionRate", "averageSessionLength", "stats_migrated_v1",
             "lastSessionDate", "dailyGoal", "weeklyGoal", "monthlyGoal"
         ]
-        
         for key in sessionKeys {
-            let oldValue = userDefaults.object(forKey: key)
-            if oldValue != nil {
-                print("🗑️ Removing UserDefaults[\(key)] = \(oldValue!)")
+            if let oldValue = userDefaults.object(forKey: key) {
+                print("🗑️ Removing UserDefaults[\(key)] = \(oldValue)")
                 userDefaults.removeObject(forKey: key)
             }
         }
-        
-        // Force synchronize to disk
         userDefaults.synchronize()
-        
         print("✅ All UserDefaults session data purged")
     }
     
     func initializeDefaultData() {
         print("🌱 Initializing default data for development...")
-        
-        // Create default achievements
-        let defaultAchievements = [
-            Achievement(
-                title: "First Focus",
-                description: "Complete your first focus session",
-                icon: "🎯",
-                type: .sessionsCompleted,
-                progress: 0,
-                target: 1
-            ),
-            Achievement(
-                title: "Focus Master",
-                description: "Complete 10 focus sessions",
-                icon: "🏆",
-                type: .sessionsCompleted,
-                progress: 0,
-                target: 10
-            ),
-            Achievement(
-                title: "Time Keeper",
-                description: "Focus for 2 hours total",
-                icon: "⏰",
-                type: .totalFocusTime,
-                progress: 0,
-                target: 120
-            ),
-            Achievement(
-                title: "Streak Starter",
-                description: "Maintain a 3-day focus streak",
-                icon: "🔥",
-                type: .streak,
-                progress: 0,
-                target: 3
-            )
+        let defaults = [
+            Achievement(title: "First Focus", description: "Complete your first focus session", icon: "🎯", type: .sessionsCompleted, progress: 0, target: 1),
+            Achievement(title: "Focus Master", description: "Complete 10 focus sessions", icon: "🏆", type: .sessionsCompleted, progress: 0, target: 10),
+            Achievement(title: "Time Keeper", description: "Focus for 2 hours total", icon: "⏰", type: .totalFocusTime, progress: 0, target: 120),
+            Achievement(title: "Streak Starter", description: "Maintain a 3-day focus streak", icon: "🔥", type: .streak, progress: 0, target: 3)
         ]
-        
-        for achievement in defaultAchievements {
+        for achievement in defaults {
             if addAchievement(achievement) {
                 print("✅ Created default achievement: \(achievement.title)")
             } else {
                 print("❌ Failed to create achievement: \(achievement.title)")
             }
         }
-        
         print("✅ Default data initialization complete")
     }
     
-    // MARK: - Repository Access
-    
-    func getSessionRepository() -> SessionRepository {
-        return sessionRepository
-    }
-    
-    func getAchievementRepository() -> AchievementRepository {
-        return achievementRepository
-    }
-    
-    func getSettingsRepository() -> SettingsRepository {
-        return settingsRepository
-    }
+    func getSessionRepository() -> SessionRepository { sessionRepository }
+    func getAchievementRepository() -> AchievementRepository { achievementRepository }
+    func getSettingsRepository() -> SettingsRepository { settingsRepository }
 }

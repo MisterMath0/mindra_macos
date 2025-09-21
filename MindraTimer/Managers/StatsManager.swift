@@ -43,6 +43,11 @@ class StatsManager: ObservableObject {
         fetchStats(for: settingsManager.displayPeriod)
         loadAchievements()
         
+        // Seed default achievements if none exist
+        if achievements.isEmpty {
+            initializeDefaultAchievements()
+        }
+        
         print("📊 Stats Manager initialized")
     }
     
@@ -54,6 +59,11 @@ class StatsManager: ObservableObject {
         // Load existing data
         fetchStats(for: settingsManager.displayPeriod)
         loadAchievements()
+        
+        // Seed default achievements if none exist
+        if achievements.isEmpty {
+            initializeDefaultAchievements()
+        }
         
         print("📊 Stats Manager initialized with notification service")
     }
@@ -599,3 +609,4 @@ class StatsManager: ObservableObject {
         return todaysFocusTime
     }
 }
+

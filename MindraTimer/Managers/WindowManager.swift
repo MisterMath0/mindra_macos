@@ -14,13 +14,24 @@ class WindowManager: ObservableObject {
     @Published var isAlwaysOnTop: Bool = false
     
     private var window: NSWindow?
+    private var didApplyInitialSize = false
+    private var lastAppliedCompact: Bool?
+    private var lastAppliedAlwaysOnTop: Bool?
+    private var isApplyingModeChange = false
     
     func setWindow(_ window: NSWindow) {
+        // If we already have this window, avoid re-initializing
+        if let existing = self.window, existing === window {
+            return
+        }
         self.window = window
         setupWindow()
         
-        // 🎯 SET OPTIMAL INITIAL SIZE
-        setOptimalInitialSize()
+        // 🎯 SET OPTIMAL INITIAL SIZE (only once)
+        if !didApplyInitialSize {
+            setOptimalInitialSize()
+            didApplyInitialSize = true
+        }
         
         // Add notification observer for window focus changes
         NotificationCenter.default.addObserver(
@@ -71,7 +82,10 @@ class WindowManager: ObservableObject {
         window.titleVisibility = .visible
         window.styleMask.insert(.fullSizeContentView)
         
-        updateWindowMode()
+        // Apply current mode once (deferred to avoid doing it during layout)
+        DispatchQueue.main.async { [weak self] in
+            self?.updateWindowMode()
+        }
     }
     
     func toggleCompactMode() {
@@ -87,78 +101,127 @@ class WindowManager: ObservableObject {
     private func updateWindowMode() {
         guard let window = window else { return }
         
-        if isCompact {
-            // PiP mode: Always on top, resizable, hide native controls
-            window.level = .floating
-            
-            // Hide native window controls (red/yellow/green buttons)
-            window.standardWindowButton(.closeButton)?.isHidden = true
-            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
-            window.standardWindowButton(.zoomButton)?.isHidden = true
-            
-            // 📱 OPTIMIZED COMPACT CONSTRAINTS
-            window.styleMask = [.resizable, .fullSizeContentView]
-            window.minSize = NSSize(width: 320, height: 200)
-            window.maxSize = NSSize(width: 600, height: 400)
-            
-            // Clean PiP appearance
-            window.titleVisibility = .hidden
-            window.titlebarAppearsTransparent = true
-            
-            // 🎯 OPTIMAL COMPACT SIZE - Better proportions
-            let compactSize = getOptimalCompactSize()
-            window.setContentSize(compactSize)
-            print("📱 COMPACT MODE: \(compactSize.width) x \(compactSize.height)")
-            
-            // ROUNDED CORNERS
-            window.contentView?.wantsLayer = true
-            window.contentView?.layer?.cornerRadius = 20
-            window.contentView?.layer?.masksToBounds = true
-            
-            // Make window background transparent
-            window.isOpaque = false
-            window.backgroundColor = .clear
-            
-        } else {
-            // Full mode: Restore to better proportions
-            window.level = isAlwaysOnTop ? .floating : .normal
-            
-            // Show native window controls
-            window.standardWindowButton(.closeButton)?.isHidden = false
-            window.standardWindowButton(.miniaturizeButton)?.isHidden = false
-            window.standardWindowButton(.zoomButton)?.isHidden = false
-            
-            // Full window styling
-            window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-            
-            // BETTER SIZING - More reasonable for the content
-            let screenSize = getOptimalWindowSize()
-            window.minSize = NSSize(width: screenSize.minWidth, height: screenSize.minHeight)
-            window.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-            
-            // Show title bar
-            window.titleVisibility = .visible
-            window.titlebarAppearsTransparent = true
-            
-            // 🎯 Set optimal default size
-            let newSize = NSSize(width: screenSize.defaultWidth, height: screenSize.defaultHeight)
-            window.setContentSize(newSize)
-            print("🖥️ FULL MODE: \(screenSize.defaultWidth) x \(screenSize.defaultHeight)")
-            
-            // Remove rounded corners for full mode
-            window.contentView?.layer?.cornerRadius = 0
-            window.contentView?.layer?.masksToBounds = false
-            
-            // Restore normal background
-            window.isOpaque = false
-            window.backgroundColor = NSColor.black
+        // Avoid re-entrancy and redundant re-application
+        if isApplyingModeChange { return }
+        if lastAppliedCompact == isCompact && lastAppliedAlwaysOnTop == isAlwaysOnTop {
+            return
         }
         
-        // Re-apply appearance settings
-        window.appearance = NSAppearance(named: .darkAqua)
+        isApplyingModeChange = true
+        let targetCompact = isCompact
+        let targetAlwaysOnTop = isAlwaysOnTop
         
-        // Smart window positioning
-        centerWindowOnScreen()
+        // Defer mutations to next runloop to avoid acting during SwiftUI constraint updates
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self = self, let window = window else { return }
+            
+            if targetCompact {
+                // PiP mode: Always on top, resizable, hide native controls
+                window.level = .floating
+                
+                // Hide native window controls (red/yellow/green buttons)
+                window.standardWindowButton(.closeButton)?.isHidden = true
+                window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+                window.standardWindowButton(.zoomButton)?.isHidden = true
+                
+                // Only set styleMask if different
+                let compactMask: NSWindow.StyleMask = [.resizable, .fullSizeContentView]
+                if window.styleMask != compactMask {
+                    window.styleMask = compactMask
+                }
+                
+                // Min/max sizes
+                let minSize = NSSize(width: 320, height: 200)
+                if window.minSize != minSize {
+                    window.minSize = minSize
+                }
+                let maxSize = NSSize(width: 600, height: 400)
+                if window.maxSize != maxSize {
+                    window.maxSize = maxSize
+                }
+                
+                // Clean PiP appearance
+                if window.titleVisibility != .hidden {
+                    window.titleVisibility = .hidden
+                }
+                window.titlebarAppearsTransparent = true
+                
+                // 🎯 OPTIMAL COMPACT SIZE - Better proportions
+                let compactSize = self.getOptimalCompactSize()
+                if window.contentView?.frame.size != compactSize {
+                    window.setContentSize(compactSize)
+                    // Center only if size actually changed
+                    self.centerWindowOnScreen()
+                    print("📱 COMPACT MODE: \(compactSize.width) x \(compactSize.height)")
+                }
+                
+                // ROUNDED CORNERS + transparent background
+                window.contentView?.wantsLayer = true
+                if window.contentView?.layer?.cornerRadius != 20 {
+                    window.contentView?.layer?.cornerRadius = 20
+                }
+                window.contentView?.layer?.masksToBounds = true
+                window.isOpaque = false
+                window.backgroundColor = .clear
+                
+            } else {
+                // Full mode: Restore
+                window.level = targetAlwaysOnTop ? .floating : .normal
+                
+                // Show native window controls
+                window.standardWindowButton(.closeButton)?.isHidden = false
+                window.standardWindowButton(.miniaturizeButton)?.isHidden = false
+                window.standardWindowButton(.zoomButton)?.isHidden = false
+                
+                // Full window styling
+                let fullMask: NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+                if window.styleMask != fullMask {
+                    window.styleMask = fullMask
+                }
+                
+                // Better sizing
+                let screenSize = self.getOptimalWindowSize()
+                let minSize = NSSize(width: screenSize.minWidth, height: screenSize.minHeight)
+                if window.minSize != minSize {
+                    window.minSize = minSize
+                }
+                let maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+                if window.maxSize != maxSize {
+                    window.maxSize = maxSize
+                }
+                
+                // Show title bar
+                if window.titleVisibility != .visible {
+                    window.titleVisibility = .visible
+                }
+                window.titlebarAppearsTransparent = true
+                
+                // 🎯 Set optimal default size if different
+                let newSize = NSSize(width: screenSize.defaultWidth, height: screenSize.defaultHeight)
+                if window.contentView?.frame.size != newSize {
+                    window.setContentSize(newSize)
+                    self.centerWindowOnScreen()
+                    print("🖥️ FULL MODE: \(screenSize.defaultWidth) x \(screenSize.defaultHeight)")
+                }
+                
+                // Remove rounded corners for full mode
+                if window.contentView?.layer?.cornerRadius != 0 {
+                    window.contentView?.layer?.cornerRadius = 0
+                }
+                window.contentView?.layer?.masksToBounds = false
+                
+                // Restore normal background
+                window.isOpaque = false
+                window.backgroundColor = NSColor.black
+            }
+            
+            // Re-apply appearance settings
+            window.appearance = NSAppearance(named: .darkAqua)
+            
+            self.lastAppliedCompact = targetCompact
+            self.lastAppliedAlwaysOnTop = targetAlwaysOnTop
+            self.isApplyingModeChange = false
+        }
     }
     
     // MARK: - 🎯 OPTIMAL WINDOW SIZING - RESEARCH-BASED IMPLEMENTATION
@@ -259,10 +322,15 @@ class WindowManager: ObservableObject {
         
         // Set initial size to optimal default
         let initialSize = NSSize(width: sizing.defaultWidth, height: sizing.defaultHeight)
-        window.setContentSize(initialSize)
+        if window.contentView?.frame.size != initialSize {
+            window.setContentSize(initialSize)
+        }
         
         // Set size constraints
-        window.minSize = NSSize(width: sizing.minWidth, height: sizing.minHeight)
+        let minSize = NSSize(width: sizing.minWidth, height: sizing.minHeight)
+        if window.minSize != minSize {
+            window.minSize = minSize
+        }
         
         // Center the window after sizing
         centerWindowOnScreen()
@@ -290,3 +358,4 @@ class WindowManager: ObservableObject {
         }
     }
 }
+

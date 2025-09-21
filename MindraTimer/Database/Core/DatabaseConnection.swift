@@ -7,7 +7,7 @@ class DatabaseConnection {
     private var isInTransaction = false
     private var isConnected = false
     
-    // THREAD SAFETY FIX: Serial queue for all database operations
+    // Serial queue for all database operations
     private let databaseQueue = DispatchQueue(label: "com.mindratimer.database", qos: .userInitiated)
     
     init(dbPath: String) {
@@ -15,48 +15,40 @@ class DatabaseConnection {
     }
     
     func connect() throws {
-        try databaseQueue.sync {
-            // Open database connection
+        try performSync {
             if sqlite3_open(dbPath, &db) != SQLITE_OK {
                 let errorMessage = db != nil ? String(cString: sqlite3_errmsg(db)) : "Failed to open database"
                 throw DatabaseError.connectionFailed(errorMessage)
             }
             
-            // Mark as connected
             isConnected = true
             
-            // Configure database settings
             var errorMessage: UnsafeMutablePointer<CChar>?
             
-            // Enable foreign keys
             if sqlite3_exec(db, "PRAGMA foreign_keys = ON;", nil, nil, &errorMessage) != SQLITE_OK {
                 let error = errorMessage.map { String(cString: $0) } ?? "Failed to enable foreign keys"
                 sqlite3_free(errorMessage)
                 throw DatabaseError.connectionFailed(error)
             }
             
-            // Enable WAL mode
             if sqlite3_exec(db, "PRAGMA journal_mode = WAL;", nil, nil, &errorMessage) != SQLITE_OK {
                 let error = errorMessage.map { String(cString: $0) } ?? "Failed to enable WAL mode"
                 sqlite3_free(errorMessage)
                 throw DatabaseError.connectionFailed(error)
             }
             
-            // Set synchronous mode
             if sqlite3_exec(db, "PRAGMA synchronous = NORMAL;", nil, nil, &errorMessage) != SQLITE_OK {
                 let error = errorMessage.map { String(cString: $0) } ?? "Failed to set synchronous mode"
                 sqlite3_free(errorMessage)
                 throw DatabaseError.connectionFailed(error)
             }
             
-            // Set cache size
             if sqlite3_exec(db, "PRAGMA cache_size = 10000;", nil, nil, &errorMessage) != SQLITE_OK {
                 let error = errorMessage.map { String(cString: $0) } ?? "Failed to set cache size"
                 sqlite3_free(errorMessage)
                 throw DatabaseError.connectionFailed(error)
             }
             
-            // Set temp store
             if sqlite3_exec(db, "PRAGMA temp_store = MEMORY;", nil, nil, &errorMessage) != SQLITE_OK {
                 let error = errorMessage.map { String(cString: $0) } ?? "Failed to set temp store"
                 sqlite3_free(errorMessage)
@@ -71,84 +63,89 @@ class DatabaseConnection {
                 sqlite3_close(db)
                 self.db = nil
                 self.isConnected = false
+                self.isInTransaction = false
             }
         }
     }
     
     func execute(_ query: String) throws {
-        var errorMessage: UnsafeMutablePointer<CChar>?
-        
-        guard isConnected && db != nil else {
-            throw DatabaseError.connectionFailed("Database not connected")
-        }
-        
-        if sqlite3_exec(db, query, nil, nil, &errorMessage) != SQLITE_OK {
-            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
-            sqlite3_free(errorMessage)
-            throw DatabaseError.queryFailed(error)
+        try performSync {
+            var errorMessage: UnsafeMutablePointer<CChar>?
+            guard isConnected && db != nil else {
+                throw DatabaseError.connectionFailed("Database not connected")
+            }
+            if sqlite3_exec(db, query, nil, nil, &errorMessage) != SQLITE_OK {
+                let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
+                let code = sqlite3_errcode(db)
+                if let msg = errorMessage { sqlite3_free(msg) }
+                throw DatabaseError.queryFailed("SQLite error \(code): \(error) - Query: \(query)")
+            }
         }
     }
     
     func beginTransaction() throws {
-        guard isConnected && db != nil else {
-            throw DatabaseError.connectionFailed("Database not connected")
+        try performSync {
+            guard isConnected && db != nil else {
+                throw DatabaseError.connectionFailed("Database not connected")
+            }
+            guard !isInTransaction else { return }
+            var errorMessage: UnsafeMutablePointer<CChar>?
+            if sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, &errorMessage) != SQLITE_OK {
+                let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
+                let code = sqlite3_errcode(db)
+                if let msg = errorMessage { sqlite3_free(msg) }
+                throw DatabaseError.transactionFailed("SQLite error \(code): \(error)")
+            }
+            isInTransaction = true
         }
-        
-        guard !isInTransaction else { return }
-        
-        var errorMessage: UnsafeMutablePointer<CChar>?
-        if sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, &errorMessage) != SQLITE_OK {
-            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
-            sqlite3_free(errorMessage)
-            throw DatabaseError.transactionFailed(error)
-        }
-        isInTransaction = true
     }
     
     func commitTransaction() throws {
-        guard isConnected && db != nil else {
-            throw DatabaseError.connectionFailed("Database not connected")
+        try performSync {
+            guard isConnected && db != nil else {
+                throw DatabaseError.connectionFailed("Database not connected")
+            }
+            guard isInTransaction else { return }
+            var errorMessage: UnsafeMutablePointer<CChar>?
+            if sqlite3_exec(db, "COMMIT;", nil, nil, &errorMessage) != SQLITE_OK {
+                let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
+                let code = sqlite3_errcode(db)
+                if let msg = errorMessage { sqlite3_free(msg) }
+                throw DatabaseError.transactionFailed("SQLite error \(code): \(error)")
+            }
+            isInTransaction = false
         }
-        
-        guard isInTransaction else { return }
-        
-        var errorMessage: UnsafeMutablePointer<CChar>?
-        if sqlite3_exec(db, "COMMIT;", nil, nil, &errorMessage) != SQLITE_OK {
-            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
-            sqlite3_free(errorMessage)
-            throw DatabaseError.transactionFailed(error)
-        }
-        isInTransaction = false
     }
     
     func rollbackTransaction() throws {
-        guard isConnected && db != nil else {
-            throw DatabaseError.connectionFailed("Database not connected")
+        try performSync {
+            guard isConnected && db != nil else {
+                throw DatabaseError.connectionFailed("Database not connected")
+            }
+            guard isInTransaction else { return }
+            var errorMessage: UnsafeMutablePointer<CChar>?
+            if sqlite3_exec(db, "ROLLBACK;", nil, nil, &errorMessage) != SQLITE_OK {
+                let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
+                let code = sqlite3_errcode(db)
+                if let msg = errorMessage { sqlite3_free(msg) }
+                throw DatabaseError.transactionFailed("SQLite error \(code): \(error)")
+            }
+            isInTransaction = false
         }
-        
-        guard isInTransaction else { return }
-        
-        var errorMessage: UnsafeMutablePointer<CChar>?
-        if sqlite3_exec(db, "ROLLBACK;", nil, nil, &errorMessage) != SQLITE_OK {
-            let error = errorMessage.map { String(cString: $0) } ?? "Unknown error"
-            sqlite3_free(errorMessage)
-            throw DatabaseError.transactionFailed(error)
-        }
-        isInTransaction = false
     }
     
+    // IMPORTANT: These helpers must be called only from within performSync blocks.
+    // They do NOT call performSync themselves to avoid deadlocks.
     func prepareStatement(_ query: String) throws -> OpaquePointer? {
         guard isConnected && db != nil else {
             throw DatabaseError.connectionFailed("Database not connected")
         }
-        
         var statement: OpaquePointer?
-        
         if sqlite3_prepare_v2(db, query, -1, &statement, nil) != SQLITE_OK {
             let errorMessage = String(cString: sqlite3_errmsg(db))
-            throw DatabaseError.queryFailed(errorMessage)
+            let code = sqlite3_errcode(db)
+            throw DatabaseError.queryFailed("SQLite error \(code): \(errorMessage) - Query: \(query)")
         }
-        
         return statement
     }
     
@@ -159,13 +156,13 @@ class DatabaseConnection {
     }
     
     func getDatabasePointer() -> OpaquePointer? {
+        // Exposed for debugging, but do not use directly; always go through the queue.
         return db
     }
     
     // Public method for executing operations on the database queue
     func performSync<T>(_ operation: () throws -> T) throws -> T {
         var result: Result<T, Error>!
-        
         databaseQueue.sync {
             do {
                 let value = try operation()
@@ -174,7 +171,6 @@ class DatabaseConnection {
                 result = .failure(error)
             }
         }
-        
         switch result! {
         case .success(let value):
             return value
@@ -183,7 +179,6 @@ class DatabaseConnection {
         }
     }
     
-    // Async version for non-throwing operations
     func performAsync(_ operation: @escaping () -> Void) {
         databaseQueue.async {
             guard self.isConnected else { return }

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 @main
 struct MindraTimerApp: App {
@@ -18,13 +19,6 @@ struct MindraTimerApp: App {
     @StateObject private var greetingManager = GreetingManager()
     @StateObject private var audioService = AudioService()
     @StateObject private var notificationService = NotificationService()
-    
-    init() {
-        // Set appearance when the app is ready
-        DispatchQueue.main.async {
-            NSApp.appearance = NSAppearance(named: .darkAqua)
-        }
-    }
     
     var body: some Scene {
         WindowGroup {
@@ -58,40 +52,15 @@ struct MindraTimerApp: App {
                     notificationService.setUserName(userName)
                     quotesManager.setUserName(userName)
                     greetingManager.setUserName(userName)
-                    
-                    // One-time database fix (for development)
-                    #if DEBUG
-                    runDatabaseFixIfNeeded()
-                    #endif
                 }
         }
         .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentMinSize) // Always allow resizing
-    }
-    
-    private func runDatabaseFixIfNeeded() {
-        // Check if we need to run the database fix
-        let fixKey = "database_fix_applied_v1"
-        if !UserDefaults.standard.bool(forKey: fixKey) {
-            print("🚀 Running one-time database fix...")
-            
-            // Run the fix
-            DatabaseManager.shared.fixDatabaseIssuesNow()
-            
-            // Mark as complete
-            UserDefaults.standard.set(true, forKey: fixKey)
-            
-            // Initialize default achievements if needed
-            if statsManager.achievements.isEmpty {
-                statsManager.initializeDefaultAchievements()
-            }
-            
-            print("✅ Database fix complete!")
-        }
+        .windowResizability(.contentMinSize)
     }
 }
 
 // Helper to access the underlying NSWindow
+#if os(macOS)
 struct WindowAccessor: NSViewRepresentable {
     let windowManager: WindowManager
     
@@ -113,3 +82,4 @@ struct WindowAccessor: NSViewRepresentable {
         }
     }
 }
+#endif

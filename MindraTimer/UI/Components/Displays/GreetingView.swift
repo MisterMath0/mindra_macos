@@ -14,12 +14,12 @@ struct GreetingView: View {
     
     var body: some View {
         VStack(spacing: max(8, geometry.size.height * 0.01)) {
-            let greeting = greetingManager.getGreeting()
+            let greeting = greetingManager.currentGreeting
             if !greeting.isEmpty {
                 Text(greeting)
                     .font(.system(
-                        size: max(20, geometry.size.width * 0.024), 
-                        weight: .medium, 
+                        size: max(20, geometry.size.width * 0.024),
+                        weight: .medium,
                         design: .rounded
                     ))
                     .foregroundStyle(
